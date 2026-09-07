@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background-color: #f4f6f8;
+  color: #152840;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.card {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(15, 28, 44, 0.08), 0 1px 2px rgba(15, 28, 44, 0.06);
+}
+
+.input {
+  width: 100%;
+  border: 1px solid #d3e0ec;
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+  background: white;
+  color: #152840;
+  transition: border-color 0.15s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #1d3557;
+  box-shadow: 0 0 0 3px rgba(29, 53, 87, 0.12);
+}
+
+.btn-primary {
+  background: #1d3557;
+  color: white;
+  font-weight: 600;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.5rem;
+  transition: background 0.15s ease;
+}
+.btn-primary:hover {
+  background: #152840;
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-accent {
+  background: #e9762b;
+  color: white;
+  font-weight: 600;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.5rem;
+  transition: background 0.15s ease;
+}
+.btn-accent:hover {
+  background: #c95f1c;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #1d3557;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d3e0ec;
+}
+.btn-ghost:hover {
+  background: #eef3f8;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #3d6690;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.25rem;
+  display: block;
+}
