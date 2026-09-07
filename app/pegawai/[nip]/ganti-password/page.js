@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import PasswordInput from '@/components/PasswordInput';
 
 export default function GantiPasswordPage() {
   const params = useParams();
@@ -61,29 +62,23 @@ export default function GantiPasswordPage() {
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">
           <div>
             <label className="label">Password Saat Ini</label>
-            <input
-              className="input"
-              type="password"
-              placeholder="Login pertama: isi dengan NIK Anda"
+            <PasswordInput
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
+              placeholder="Login pertama: isi dengan NIK Anda"
               autoFocus
             />
           </div>
           <div>
             <label className="label">Password Baru</label>
-            <input
-              className="input"
-              type="password"
+            <PasswordInput
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
           </div>
           <div>
             <label className="label">Ulangi Password Baru</label>
-            <input
-              className="input"
-              type="password"
+            <PasswordInput
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />

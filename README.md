@@ -22,6 +22,12 @@ coding ulang. Semua data disimpan di Google Sheets.
    Google Sheets (File → Import di Google Sheets, atau upload ke Google Drive lalu buka dengan
    Google Sheets).
 2. Ganti nama tab (sheet) hasil import menjadi persis: **`SDM`**
+
+   Tambahkan 2 kolom baru di sheet `SDM` (di sebelah kanan kolom terakhir), diberi header persis:
+   ```
+   NO REKENING MANDIRI | NAMA REKENING MANDIRI
+   ```
+   (untuk mencatat rekening Bank Mandiri terpisah dari rekening Bank Jatim yang sudah ada)
    (klik kanan tab di bawah → Rename).
 3. Tambahkan tab baru bernama **`DesaDampingan`** dengan baris header (baris 1) persis seperti ini:
 

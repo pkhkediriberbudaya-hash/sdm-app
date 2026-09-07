@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import PasswordInput from '@/components/PasswordInput';
 
 export default function HomePage() {
   const router = useRouter();
@@ -66,12 +67,10 @@ export default function HomePage() {
           </div>
           <div>
             <label className="label">Password</label>
-            <input
-              className="input"
-              type="password"
-              placeholder="Login pertama: isi dengan NIK Anda"
+            <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="Login pertama: isi dengan NIK Anda"
             />
             <p className="text-xs text-navy-400 mt-1">
               Login pertama kali? Password default = NIK Anda, lalu Anda akan diminta

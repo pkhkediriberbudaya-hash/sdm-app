@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { WILAYAH_KEDIRI } from '@/lib/wilayahKediri';
 
 const READONLY_FIELDS = ['NO', 'NIP', 'NIK', 'STATUS DATA'];
 
@@ -40,6 +41,8 @@ const STATIC_GROUPS = [
       'NAMA REKENING',
       'BANK',
       'NOMER REKENING BANK JATIM',
+      'NO REKENING MANDIRI',
+      'NAMA REKENING MANDIRI',
       'NO NPWP',
       'NO BPJS KESEHATAN',
       'NO BPJS KETENAGA KERJAAN PUSAT',
@@ -66,8 +69,15 @@ export default function PegawaiPage() {
 
   const [desaList, setDesaList] = useState([]);
   const [desaLoading, setDesaLoading] = useState(true);
-  const [newDesa, setNewDesa] = useState({ NAMA_DESA: '', KECAMATAN: '', KETERANGAN: '' });
+  const [selectedKecamatan, setSelectedKecamatan] = useState('');
+  const [selectedDesaSet, setSelectedDesaSet] = useState(new Set());
   const [addingDesa, setAddingDesa] = useState(false);
+
+  const kecamatanList = useMemo(() => Object.keys(WILAYAH_KEDIRI).sort(), []);
+  const desaOptions = useMemo(
+    () => (selectedKecamatan ? WILAYAH_KEDIRI[selectedKecamatan] || [] : []),
+    [selectedKecamatan]
+  );
 
   const [keluargaList, setKeluargaList] = useState([]);
   const [keluargaLoading, setKeluargaLoading] = useState(true);
@@ -170,17 +180,39 @@ export default function PegawaiPage() {
     }
   }
 
+  function toggleDesa(namaDesa) {
+    setSelectedDesaSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(namaDesa)) next.delete(namaDesa);
+      else next.add(namaDesa);
+      return next;
+    });
+  }
+
   async function handleAddDesa(e) {
     e.preventDefault();
-    if (!newDesa.NAMA_DESA.trim()) return;
+    if (!selectedKecamatan || selectedDesaSet.size === 0) return;
     setAddingDesa(true);
     try {
-      await fetch('/api/desa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newDesa),
-      });
-      setNewDesa({ NAMA_DESA: '', KECAMATAN: '', KETERANGAN: '' });
+      const existing = new Set(
+        desaList
+          .filter((d) => d.KECAMATAN === selectedKecamatan)
+          .map((d) => d.NAMA_DESA)
+      );
+      const toAdd = Array.from(selectedDesaSet).filter((d) => !existing.has(d));
+      await Promise.all(
+        toAdd.map((namaDesa) =>
+          fetch('/api/desa', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              NAMA_DESA: namaDesa,
+              KECAMATAN: selectedKecamatan,
+            }),
+          })
+        )
+      );
+      setSelectedDesaSet(new Set());
       loadDesa();
     } finally {
       setAddingDesa(false);
@@ -227,6 +259,8 @@ export default function PegawaiPage() {
     router.push('/');
   }
 
+  const staticTitles = useMemo(() => new Set(STATIC_GROUPS.map((g) => g.title)), []);
+
   const dynamicGroups = useMemo(() => {
     const staticFieldSet = new Set(STATIC_GROUPS.flatMap((g) => g.fields));
     const remaining = headers.filter(
@@ -244,11 +278,25 @@ export default function PegawaiPage() {
       groupsMap.get(groupLabel).push({ field, order });
     });
 
-    return Array.from(groupsMap.entries()).map(([title, fields]) => ({
-      title,
-      fields: fields.sort((a, b) => a.order - b.order).map((f) => f.field),
-    }));
-  }, [headers, fieldConfig]);
+    return Array.from(groupsMap.entries())
+      // Field yang GROUP_LABEL-nya sama dengan judul grup statis sudah dirender
+      // di dalam grup statis itu sendiri (lihat renderExtraFieldsFor), jadi tidak
+      // perlu dibuatkan kartu baru di sini.
+      .filter(([title]) => !staticTitles.has(title))
+      .map(([title, fields]) => ({
+        title,
+        fields: fields.sort((a, b) => a.order - b.order).map((f) => f.field),
+      }));
+  }, [headers, fieldConfig, staticTitles]);
+
+  function extraFieldsFor(groupTitle) {
+    const configMap = new Map(fieldConfig.map((c) => [c.fieldName, c]));
+    const staticFieldSet = new Set(STATIC_GROUPS.flatMap((g) => g.fields));
+    return headers
+      .filter((h) => !staticFieldSet.has(h) && h !== 'STATUS DATA')
+      .filter((h) => (configMap.get(h)?.groupLabel || 'Data Lainnya') === groupTitle)
+      .sort((a, b) => (configMap.get(a)?.order || 0) - (configMap.get(b)?.order || 0));
+  }
 
   if (loading) {
     return (
@@ -318,6 +366,16 @@ export default function PegawaiPage() {
                       />
                     </div>
                   ))}
+                {extraFieldsFor(group.title).map((field) => (
+                  <div key={field}>
+                    <label className="label">{field.trim()}</label>
+                    <input
+                      className="input"
+                      value={form?.[field] ?? ''}
+                      onChange={(e) => handleChange(field, e.target.value)}
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -389,31 +447,66 @@ export default function PegawaiPage() {
             </ul>
           )}
 
-          <form onSubmit={handleAddDesa} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input
-              className="input"
-              placeholder="Nama desa"
-              value={newDesa.NAMA_DESA}
-              onChange={(e) => setNewDesa((s) => ({ ...s, NAMA_DESA: e.target.value }))}
-            />
-            <input
-              className="input"
-              placeholder="Kecamatan"
-              value={newDesa.KECAMATAN}
-              onChange={(e) => setNewDesa((s) => ({ ...s, KECAMATAN: e.target.value }))}
-            />
-            <input
-              className="input"
-              placeholder="Keterangan (opsional)"
-              value={newDesa.KETERANGAN}
-              onChange={(e) => setNewDesa((s) => ({ ...s, KETERANGAN: e.target.value }))}
-            />
+          <form onSubmit={handleAddDesa} className="space-y-3">
+            <div>
+              <label className="label">Kecamatan</label>
+              <select
+                className="input"
+                value={selectedKecamatan}
+                onChange={(e) => {
+                  setSelectedKecamatan(e.target.value);
+                  setSelectedDesaSet(new Set());
+                }}
+              >
+                <option value="">-- Pilih Kecamatan --</option>
+                {kecamatanList.map((kec) => (
+                  <option key={kec} value={kec}>
+                    {kec}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedKecamatan && (
+              <div>
+                <label className="label">
+                  Desa/Kelurahan (boleh pilih lebih dari satu)
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto border border-navy-100 rounded-lg p-3">
+                  {desaOptions.map((desa) => {
+                    const alreadyAdded = desaList.some(
+                      (d) => d.KECAMATAN === selectedKecamatan && d.NAMA_DESA === desa
+                    );
+                    return (
+                      <label
+                        key={desa}
+                        className={`flex items-center gap-2 text-sm ${
+                          alreadyAdded ? 'text-navy-400' : 'text-navy-700'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedDesaSet.has(desa) || alreadyAdded}
+                          disabled={alreadyAdded}
+                          onChange={() => toggleDesa(desa)}
+                        />
+                        {desa}
+                        {alreadyAdded && ' (sudah)'}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
-              className="btn-accent sm:col-span-3"
-              disabled={addingDesa || !newDesa.NAMA_DESA.trim()}
+              className="btn-accent w-full"
+              disabled={addingDesa || selectedDesaSet.size === 0}
             >
-              {addingDesa ? 'Menambahkan...' : '+ Tambah Desa Dampingan'}
+              {addingDesa
+                ? 'Menambahkan...'
+                : `+ Tambah ${selectedDesaSet.size || ''} Desa Dampingan`.trim()}
             </button>
           </form>
         </div>
