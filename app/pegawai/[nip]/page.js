@@ -345,6 +345,12 @@ export default function PegawaiPage() {
           </div>
           <div className="flex items-center gap-4">
             <a
+              href={`/pegawai/${encodeURIComponent(nip)}/kpm`}
+              className="text-navy-100 text-sm underline"
+            >
+              Data KPM
+            </a>
+            <a
               href={`/pegawai/${encodeURIComponent(nip)}/ganti-password`}
               className="text-navy-100 text-sm underline"
             >

@@ -168,7 +168,20 @@ berlaku.
 
 ---
 
-## Struktur data
+## Fitur Data KPM (Tahap 3)
+
+- **Admin** mengunggah CSV per kecamatan lewat menu "Upload Data KPM" — sistem otomatis membuat
+  tab `KPM_[Kecamatan]`, mencocokkan kolom secara fleksibel, dan meng-upsert data by NOKK.
+- **Pendamping** membuka menu "Data KPM" di halaman mereka, pilih kecamatan, lalu **"Unduh untuk
+  Offline"** — sejak itu data KPM desa dampingan mereka tersimpan di HP dan bisa dibuka/diedit
+  tanpa internet.
+- Aplikasi ini adalah **PWA** (bisa di-"Install" ke HP dari menu browser "Add to Home Screen" /
+  "Install app") — supaya bisa dibuka tanpa internet sama sekali, pendamping perlu membuka
+  aplikasinya **minimal sekali** saat masih ada koneksi.
+- Perubahan status KPM (Aktif/Pengaduan/Graduasi Mandiri/PPSE) yang dibuat saat offline otomatis
+  masuk antrian dan terkirim ke server begitu HP kembali online.
+
+
 
 - **`SDM`** — data induk pegawai (35 kolom), kolom `NIP`/`NIK`/`NO` bersifat baca-saja di halaman
   pegawai (hanya admin yang bisa mengubahnya lewat panel admin).
