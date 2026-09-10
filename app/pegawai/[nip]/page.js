@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { WILAYAH_KEDIRI } from '@/lib/wilayahKediri';
 
 const READONLY_FIELDS = ['NO', 'NIP', 'NIK', 'STATUS DATA'];
+const HIDDEN_FIELDS = ['NO', 'STATUS DATA'];
 
 const STATIC_GROUPS = [
   {
@@ -32,7 +33,7 @@ const STATIC_GROUPS = [
   },
   {
     title: 'Pendidikan',
-    fields: ['PERGURUAN TINGGI/ SEKOLAH TERAKHIR', 'JURUSAN ', 'JENJANG'],
+    fields: ['PERGURUAN TINGGI/ SEKOLAH TERAKHIR', 'JURUSAN', 'JENJANG'],
   },
   {
     title: 'Rekening & Administrasi',
@@ -261,17 +262,29 @@ export default function PegawaiPage() {
 
   const staticTitles = useMemo(() => new Set(STATIC_GROUPS.map((g) => g.title)), []);
 
+  // Header di sheet kadang punya spasi tersisa (mis. "JURUSAN " bukan "JURUSAN").
+  // Peta ini mencocokkan nama field yang sudah di-trim ke nama header asli di sheet,
+  // supaya pencocokan grup tidak meleset gara-gara spasi tersembunyi.
+  const headerTrimMap = useMemo(
+    () => new Map(headers.map((h) => [h.trim(), h])),
+    [headers]
+  );
+
+  function resolveHeader(fieldName) {
+    return headerTrimMap.get(fieldName) ?? fieldName;
+  }
+
   const dynamicGroups = useMemo(() => {
     const staticFieldSet = new Set(STATIC_GROUPS.flatMap((g) => g.fields));
     const remaining = headers.filter(
-      (h) => !staticFieldSet.has(h) && h !== 'STATUS DATA'
+      (h) => !staticFieldSet.has(h.trim()) && !HIDDEN_FIELDS.includes(h.trim())
     );
 
     const configMap = new Map(fieldConfig.map((c) => [c.fieldName, c]));
     const groupsMap = new Map();
 
     remaining.forEach((field, idx) => {
-      const cfg = configMap.get(field);
+      const cfg = configMap.get(field.trim());
       const groupLabel = cfg?.groupLabel || 'Data Lainnya';
       const order = cfg ? cfg.order : 1000 + idx;
       if (!groupsMap.has(groupLabel)) groupsMap.set(groupLabel, []);
@@ -280,7 +293,7 @@ export default function PegawaiPage() {
 
     return Array.from(groupsMap.entries())
       // Field yang GROUP_LABEL-nya sama dengan judul grup statis sudah dirender
-      // di dalam grup statis itu sendiri (lihat renderExtraFieldsFor), jadi tidak
+      // di dalam grup statis itu sendiri (lihat extraFieldsFor), jadi tidak
       // perlu dibuatkan kartu baru di sini.
       .filter(([title]) => !staticTitles.has(title))
       .map(([title, fields]) => ({
@@ -293,9 +306,12 @@ export default function PegawaiPage() {
     const configMap = new Map(fieldConfig.map((c) => [c.fieldName, c]));
     const staticFieldSet = new Set(STATIC_GROUPS.flatMap((g) => g.fields));
     return headers
-      .filter((h) => !staticFieldSet.has(h) && h !== 'STATUS DATA')
-      .filter((h) => (configMap.get(h)?.groupLabel || 'Data Lainnya') === groupTitle)
-      .sort((a, b) => (configMap.get(a)?.order || 0) - (configMap.get(b)?.order || 0));
+      .filter((h) => !staticFieldSet.has(h.trim()) && !HIDDEN_FIELDS.includes(h.trim()))
+      .filter((h) => (configMap.get(h.trim())?.groupLabel || 'Data Lainnya') === groupTitle)
+      .sort(
+        (a, b) =>
+          (configMap.get(a.trim())?.order || 0) - (configMap.get(b.trim())?.order || 0)
+      );
   }
 
   if (loading) {
@@ -348,24 +364,27 @@ export default function PegawaiPage() {
               <h2 className="text-navy-700 font-bold mb-4">{group.title}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {group.fields
-                  .filter((f) => headers.includes(f))
-                  .map((field) => (
-                    <div key={field}>
-                      <label className="label">{field.trim()}</label>
-                      <input
-                        className="input"
-                        value={form?.[field] ?? ''}
-                        onChange={(e) => handleChange(field, e.target.value)}
-                        readOnly={READONLY_FIELDS.includes(field)}
-                        disabled={READONLY_FIELDS.includes(field)}
-                        style={
-                          READONLY_FIELDS.includes(field)
-                            ? { background: '#eef3f8', color: '#3d6690' }
-                            : undefined
-                        }
-                      />
-                    </div>
-                  ))}
+                  .filter((f) => headerTrimMap.has(f))
+                  .map((field) => {
+                    const actualField = resolveHeader(field);
+                    return (
+                      <div key={field}>
+                        <label className="label">{field}</label>
+                        <input
+                          className="input"
+                          value={form?.[actualField] ?? ''}
+                          onChange={(e) => handleChange(actualField, e.target.value)}
+                          readOnly={READONLY_FIELDS.includes(field)}
+                          disabled={READONLY_FIELDS.includes(field)}
+                          style={
+                            READONLY_FIELDS.includes(field)
+                              ? { background: '#eef3f8', color: '#3d6690' }
+                              : undefined
+                          }
+                        />
+                      </div>
+                    );
+                  })}
                 {extraFieldsFor(group.title).map((field) => (
                   <div key={field}>
                     <label className="label">{field.trim()}</label>

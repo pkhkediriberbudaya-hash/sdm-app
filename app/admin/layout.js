@@ -35,6 +35,17 @@ export default function AdminLayout({ children }) {
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
           <a
+            href="/admin/kpm-upload"
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition ${
+              pathname === '/admin/kpm-upload'
+                ? 'bg-rust-500 text-white'
+                : 'text-navy-100 hover:bg-navy-600 hover:text-white'
+            }`}
+          >
+            <span>📥</span>
+            <span>Upload Data KPM</span>
+          </a>
+          <a
             href="/admin/reset-password"
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition ${
               pathname === '/admin/reset-password'
