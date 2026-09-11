@@ -196,9 +196,7 @@ export default function PegawaiPage() {
     setAddingDesa(true);
     try {
       const existing = new Set(
-        desaList
-          .filter((d) => d.KECAMATAN === selectedKecamatan)
-          .map((d) => d.NAMA_DESA)
+        desaList.filter((d) => d.KECAMATAN === selectedKecamatan).map((d) => d.NAMA_DESA)
       );
       const toAdd = Array.from(selectedDesaSet).filter((d) => !existing.has(d));
       await Promise.all(
@@ -206,10 +204,7 @@ export default function PegawaiPage() {
           fetch('/api/desa', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              NAMA_DESA: namaDesa,
-              KECAMATAN: selectedKecamatan,
-            }),
+            body: JSON.stringify({ NAMA_DESA: namaDesa, KECAMATAN: selectedKecamatan }),
           })
         )
       );
@@ -236,13 +231,7 @@ export default function PegawaiPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newKeluarga),
       });
-      setNewKeluarga({
-        NAMA: '',
-        HUBUNGAN: '',
-        TANGGAL_LAHIR: '',
-        PEKERJAAN: '',
-        KETERANGAN: '',
-      });
+      setNewKeluarga({ NAMA: '', HUBUNGAN: '', TANGGAL_LAHIR: '', PEKERJAAN: '', KETERANGAN: '' });
       loadKeluarga();
     } finally {
       setAddingKeluarga(false);
@@ -255,16 +244,8 @@ export default function PegawaiPage() {
     loadKeluarga();
   }
 
-  async function handleLogout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/');
-  }
-
   const staticTitles = useMemo(() => new Set(STATIC_GROUPS.map((g) => g.title)), []);
 
-  // Header di sheet kadang punya spasi tersisa (mis. "JURUSAN " bukan "JURUSAN").
-  // Peta ini mencocokkan nama field yang sudah di-trim ke nama header asli di sheet,
-  // supaya pencocokan grup tidak meleset gara-gara spasi tersembunyi.
   const headerTrimMap = useMemo(
     () => new Map(headers.map((h) => [h.trim(), h])),
     [headers]
@@ -292,9 +273,6 @@ export default function PegawaiPage() {
     });
 
     return Array.from(groupsMap.entries())
-      // Field yang GROUP_LABEL-nya sama dengan judul grup statis sudah dirender
-      // di dalam grup statis itu sendiri (lihat extraFieldsFor), jadi tidak
-      // perlu dibuatkan kartu baru di sini.
       .filter(([title]) => !staticTitles.has(title))
       .map(([title, fields]) => ({
         title,
@@ -309,315 +287,288 @@ export default function PegawaiPage() {
       .filter((h) => !staticFieldSet.has(h.trim()) && !HIDDEN_FIELDS.includes(h.trim()))
       .filter((h) => (configMap.get(h.trim())?.groupLabel || 'Data Lainnya') === groupTitle)
       .sort(
-        (a, b) =>
-          (configMap.get(a.trim())?.order || 0) - (configMap.get(b.trim())?.order || 0)
+        (a, b) => (configMap.get(a.trim())?.order || 0) - (configMap.get(b.trim())?.order || 0)
       );
   }
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-navy-50">
-        <p className="text-navy-600">Memuat data...</p>
-      </main>
+      <div className="min-h-full flex items-center justify-center py-20">
+        <p className="text-brand-600">Memuat data...</p>
+      </div>
     );
   }
 
   if (errorLoad) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-navy-50 px-4">
+      <div className="min-h-full flex items-center justify-center py-20 px-4">
         <div className="card p-6 max-w-sm text-center">
           <p className="text-red-600 mb-4">{errorLoad}</p>
           <button className="btn-primary" onClick={() => router.push('/')}>
             Kembali
           </button>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-navy-50 pb-16">
-      <header className="bg-navy-700 text-white px-4 py-5">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+    <div className="px-4 py-6 pb-16 max-w-3xl mx-auto space-y-6">
+      {/* Kartu Selamat Datang ala SIKS-NG */}
+      <div className="relative overflow-hidden rounded-2xl bg-brand-gradient p-6 text-white">
+        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10" />
+        <div className="absolute -bottom-16 right-10 w-28 h-28 rounded-full bg-white/5" />
+        <p className="text-brand-100 text-sm relative">Selamat datang,</p>
+        <h1 className="text-2xl font-bold mt-1 relative">{form?.NAMA || nip}</h1>
+        <span className="inline-block mt-3 text-xs bg-white/15 backdrop-blur px-3 py-1 rounded-full relative">
+          NIP {nip}
+        </span>
+      </div>
+
+      <form onSubmit={handleSave} className="space-y-6">
+        {STATIC_GROUPS.map((group) => (
+          <div key={group.title} className="card p-5">
+            <h2 className="text-brand-800 font-bold mb-4">{group.title}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {group.fields
+                .filter((f) => headerTrimMap.has(f))
+                .map((field) => {
+                  const actualField = resolveHeader(field);
+                  return (
+                    <div key={field}>
+                      <label className="label">{field}</label>
+                      <input
+                        className="input"
+                        value={form?.[actualField] ?? ''}
+                        onChange={(e) => handleChange(actualField, e.target.value)}
+                        readOnly={READONLY_FIELDS.includes(field)}
+                        disabled={READONLY_FIELDS.includes(field)}
+                        style={
+                          READONLY_FIELDS.includes(field)
+                            ? { background: '#eaf3fc', color: '#3d7fd9' }
+                            : undefined
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              {extraFieldsFor(group.title).map((field) => (
+                <div key={field}>
+                  <label className="label">{field.trim()}</label>
+                  <input
+                    className="input"
+                    value={form?.[field] ?? ''}
+                    onChange={(e) => handleChange(field, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {dynamicGroups.map((group) => (
+          <div key={group.title} className="card p-5">
+            <h2 className="text-brand-800 font-bold mb-4">{group.title}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {group.fields.map((field) => (
+                <div key={field}>
+                  <label className="label">{field.trim()}</label>
+                  <input
+                    className="input"
+                    value={form?.[field] ?? ''}
+                    onChange={(e) => handleChange(field, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {message && (
+          <p
+            className={`text-sm rounded-lg px-3 py-2 border ${
+              message.type === 'success'
+                ? 'text-green-700 bg-green-50 border-green-100'
+                : 'text-red-600 bg-red-50 border-red-100'
+            }`}
+          >
+            {message.text}
+          </p>
+        )}
+
+        <button type="submit" className="btn-primary w-full sm:w-auto" disabled={saving}>
+          {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+        </button>
+      </form>
+
+      <div className="card p-5">
+        <h2 className="text-brand-800 font-bold mb-1">Desa Dampingan</h2>
+        <p className="text-sm text-brand-400 mb-4">
+          Daftar desa yang menjadi wilayah dampingan Anda.
+        </p>
+
+        {desaLoading ? (
+          <p className="text-sm text-brand-400">Memuat...</p>
+        ) : desaList.length === 0 ? (
+          <p className="text-sm text-brand-400 mb-4">Belum ada desa dampingan tercatat.</p>
+        ) : (
+          <ul className="divide-y divide-brand-100 mb-4">
+            {desaList.map((d) => (
+              <li key={d.ID} className="py-3 flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-brand-800">{d.NAMA_DESA}</p>
+                  <p className="text-sm text-brand-400">
+                    {d.KECAMATAN}
+                    {d.KETERANGAN ? ` · ${d.KETERANGAN}` : ''}
+                  </p>
+                </div>
+                <button
+                  className="text-red-600 text-sm underline shrink-0"
+                  onClick={() => handleDeleteDesa(d.ID)}
+                >
+                  Hapus
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <form onSubmit={handleAddDesa} className="space-y-3">
           <div>
-            <p className="text-navy-100 text-xs uppercase tracking-wide">Data Pegawai</p>
-            <h1 className="text-lg font-bold">{form?.NAMA || nip}</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <a
-              href={`/pegawai/${encodeURIComponent(nip)}/kpm`}
-              className="text-navy-100 text-sm underline"
+            <label className="label">Kecamatan</label>
+            <select
+              className="input"
+              value={selectedKecamatan}
+              onChange={(e) => {
+                setSelectedKecamatan(e.target.value);
+                setSelectedDesaSet(new Set());
+              }}
             >
-              Data KPM
-            </a>
-            <a
-              href={`/pegawai/${encodeURIComponent(nip)}/ganti-password`}
-              className="text-navy-100 text-sm underline"
-            >
-              Ganti Password
-            </a>
-            <button className="text-navy-100 text-sm underline" onClick={handleLogout}>
-              Keluar
-            </button>
+              <option value="">-- Pilih Kecamatan --</option>
+              {kecamatanList.map((kec) => (
+                <option key={kec} value={kec}>
+                  {kec}
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-      </header>
 
-      <div className="max-w-3xl mx-auto px-4 mt-6 space-y-6">
-        <form onSubmit={handleSave} className="space-y-6">
-          {STATIC_GROUPS.map((group) => (
-            <div key={group.title} className="card p-5">
-              <h2 className="text-navy-700 font-bold mb-4">{group.title}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {group.fields
-                  .filter((f) => headerTrimMap.has(f))
-                  .map((field) => {
-                    const actualField = resolveHeader(field);
-                    return (
-                      <div key={field}>
-                        <label className="label">{field}</label>
-                        <input
-                          className="input"
-                          value={form?.[actualField] ?? ''}
-                          onChange={(e) => handleChange(actualField, e.target.value)}
-                          readOnly={READONLY_FIELDS.includes(field)}
-                          disabled={READONLY_FIELDS.includes(field)}
-                          style={
-                            READONLY_FIELDS.includes(field)
-                              ? { background: '#eef3f8', color: '#3d6690' }
-                              : undefined
-                          }
-                        />
-                      </div>
-                    );
-                  })}
-                {extraFieldsFor(group.title).map((field) => (
-                  <div key={field}>
-                    <label className="label">{field.trim()}</label>
-                    <input
-                      className="input"
-                      value={form?.[field] ?? ''}
-                      onChange={(e) => handleChange(field, e.target.value)}
-                    />
-                  </div>
-                ))}
+          {selectedKecamatan && (
+            <div>
+              <label className="label">Desa/Kelurahan (boleh pilih lebih dari satu)</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto border border-brand-100 rounded-lg p-3">
+                {desaOptions.map((desa) => {
+                  const alreadyAdded = desaList.some(
+                    (d) => d.KECAMATAN === selectedKecamatan && d.NAMA_DESA === desa
+                  );
+                  return (
+                    <label
+                      key={desa}
+                      className={`flex items-center gap-2 text-sm ${
+                        alreadyAdded ? 'text-brand-400' : 'text-brand-800'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedDesaSet.has(desa) || alreadyAdded}
+                        disabled={alreadyAdded}
+                        onChange={() => toggleDesa(desa)}
+                      />
+                      {desa}
+                      {alreadyAdded && ' (sudah)'}
+                    </label>
+                  );
+                })}
               </div>
             </div>
-          ))}
-
-          {dynamicGroups.map((group) => (
-            <div key={group.title} className="card p-5">
-              <h2 className="text-navy-700 font-bold mb-4">{group.title}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {group.fields.map((field) => (
-                  <div key={field}>
-                    <label className="label">{field.trim()}</label>
-                    <input
-                      className="input"
-                      value={form?.[field] ?? ''}
-                      onChange={(e) => handleChange(field, e.target.value)}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-
-          {message && (
-            <p
-              className={`text-sm rounded-lg px-3 py-2 border ${
-                message.type === 'success'
-                  ? 'text-green-700 bg-green-50 border-green-100'
-                  : 'text-red-600 bg-red-50 border-red-100'
-              }`}
-            >
-              {message.text}
-            </p>
           )}
 
-          <button type="submit" className="btn-primary w-full sm:w-auto" disabled={saving}>
-            {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+          <button
+            type="submit"
+            className="btn-accent w-full"
+            disabled={addingDesa || selectedDesaSet.size === 0}
+          >
+            {addingDesa
+              ? 'Menambahkan...'
+              : `+ Tambah ${selectedDesaSet.size || ''} Desa Dampingan`.trim()}
           </button>
         </form>
-
-        <div className="card p-5">
-          <h2 className="text-navy-700 font-bold mb-1">Desa Dampingan</h2>
-          <p className="text-sm text-navy-400 mb-4">
-            Daftar desa yang menjadi wilayah dampingan Anda.
-          </p>
-
-          {desaLoading ? (
-            <p className="text-sm text-navy-400">Memuat...</p>
-          ) : desaList.length === 0 ? (
-            <p className="text-sm text-navy-400 mb-4">Belum ada desa dampingan tercatat.</p>
-          ) : (
-            <ul className="divide-y divide-navy-100 mb-4">
-              {desaList.map((d) => (
-                <li key={d.ID} className="py-3 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-navy-700">{d.NAMA_DESA}</p>
-                    <p className="text-sm text-navy-400">
-                      {d.KECAMATAN}
-                      {d.KETERANGAN ? ` · ${d.KETERANGAN}` : ''}
-                    </p>
-                  </div>
-                  <button
-                    className="text-red-600 text-sm underline shrink-0"
-                    onClick={() => handleDeleteDesa(d.ID)}
-                  >
-                    Hapus
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <form onSubmit={handleAddDesa} className="space-y-3">
-            <div>
-              <label className="label">Kecamatan</label>
-              <select
-                className="input"
-                value={selectedKecamatan}
-                onChange={(e) => {
-                  setSelectedKecamatan(e.target.value);
-                  setSelectedDesaSet(new Set());
-                }}
-              >
-                <option value="">-- Pilih Kecamatan --</option>
-                {kecamatanList.map((kec) => (
-                  <option key={kec} value={kec}>
-                    {kec}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedKecamatan && (
-              <div>
-                <label className="label">
-                  Desa/Kelurahan (boleh pilih lebih dari satu)
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto border border-navy-100 rounded-lg p-3">
-                  {desaOptions.map((desa) => {
-                    const alreadyAdded = desaList.some(
-                      (d) => d.KECAMATAN === selectedKecamatan && d.NAMA_DESA === desa
-                    );
-                    return (
-                      <label
-                        key={desa}
-                        className={`flex items-center gap-2 text-sm ${
-                          alreadyAdded ? 'text-navy-400' : 'text-navy-700'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedDesaSet.has(desa) || alreadyAdded}
-                          disabled={alreadyAdded}
-                          onChange={() => toggleDesa(desa)}
-                        />
-                        {desa}
-                        {alreadyAdded && ' (sudah)'}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="btn-accent w-full"
-              disabled={addingDesa || selectedDesaSet.size === 0}
-            >
-              {addingDesa
-                ? 'Menambahkan...'
-                : `+ Tambah ${selectedDesaSet.size || ''} Desa Dampingan`.trim()}
-            </button>
-          </form>
-        </div>
-
-        <div className="card p-5">
-          <h2 className="text-navy-700 font-bold mb-1">Anggota Keluarga</h2>
-          <p className="text-sm text-navy-400 mb-4">
-            Data anggota keluarga Anda (pasangan, anak, tanggungan, dsb).
-          </p>
-
-          {keluargaLoading ? (
-            <p className="text-sm text-navy-400">Memuat...</p>
-          ) : keluargaList.length === 0 ? (
-            <p className="text-sm text-navy-400 mb-4">Belum ada data anggota keluarga.</p>
-          ) : (
-            <ul className="divide-y divide-navy-100 mb-4">
-              {keluargaList.map((k) => (
-                <li key={k.ID} className="py-3 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-navy-700">{k.NAMA}</p>
-                    <p className="text-sm text-navy-400">
-                      {k.HUBUNGAN}
-                      {k.TANGGAL_LAHIR ? ` · Lahir ${k.TANGGAL_LAHIR}` : ''}
-                      {k.PEKERJAAN ? ` · ${k.PEKERJAAN}` : ''}
-                    </p>
-                    {k.KETERANGAN && (
-                      <p className="text-xs text-navy-400 mt-0.5">{k.KETERANGAN}</p>
-                    )}
-                  </div>
-                  <button
-                    className="text-red-600 text-sm underline shrink-0"
-                    onClick={() => handleDeleteKeluarga(k.ID)}
-                  >
-                    Hapus
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <form onSubmit={handleAddKeluarga} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input
-              className="input"
-              placeholder="Nama"
-              value={newKeluarga.NAMA}
-              onChange={(e) => setNewKeluarga((s) => ({ ...s, NAMA: e.target.value }))}
-            />
-            <input
-              className="input"
-              placeholder="Hubungan (misal: Istri, Anak)"
-              value={newKeluarga.HUBUNGAN}
-              onChange={(e) => setNewKeluarga((s) => ({ ...s, HUBUNGAN: e.target.value }))}
-            />
-            <input
-              className="input"
-              type="date"
-              placeholder="Tanggal lahir"
-              value={newKeluarga.TANGGAL_LAHIR}
-              onChange={(e) =>
-                setNewKeluarga((s) => ({ ...s, TANGGAL_LAHIR: e.target.value }))
-              }
-            />
-            <input
-              className="input"
-              placeholder="Pekerjaan"
-              value={newKeluarga.PEKERJAAN}
-              onChange={(e) => setNewKeluarga((s) => ({ ...s, PEKERJAAN: e.target.value }))}
-            />
-            <input
-              className="input sm:col-span-2"
-              placeholder="Keterangan (opsional)"
-              value={newKeluarga.KETERANGAN}
-              onChange={(e) =>
-                setNewKeluarga((s) => ({ ...s, KETERANGAN: e.target.value }))
-              }
-            />
-            <button
-              type="submit"
-              className="btn-accent sm:col-span-2"
-              disabled={addingKeluarga || !newKeluarga.NAMA.trim()}
-            >
-              {addingKeluarga ? 'Menambahkan...' : '+ Tambah Anggota Keluarga'}
-            </button>
-          </form>
-        </div>
       </div>
-    </main>
+
+      <div className="card p-5">
+        <h2 className="text-brand-800 font-bold mb-1">Anggota Keluarga</h2>
+        <p className="text-sm text-brand-400 mb-4">
+          Data anggota keluarga Anda (pasangan, anak, tanggungan, dsb).
+        </p>
+
+        {keluargaLoading ? (
+          <p className="text-sm text-brand-400">Memuat...</p>
+        ) : keluargaList.length === 0 ? (
+          <p className="text-sm text-brand-400 mb-4">Belum ada data anggota keluarga.</p>
+        ) : (
+          <ul className="divide-y divide-brand-100 mb-4">
+            {keluargaList.map((k) => (
+              <li key={k.ID} className="py-3 flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-brand-800">{k.NAMA}</p>
+                  <p className="text-sm text-brand-400">
+                    {k.HUBUNGAN}
+                    {k.TANGGAL_LAHIR ? ` · Lahir ${k.TANGGAL_LAHIR}` : ''}
+                    {k.PEKERJAAN ? ` · ${k.PEKERJAAN}` : ''}
+                  </p>
+                  {k.KETERANGAN && <p className="text-xs text-brand-400 mt-0.5">{k.KETERANGAN}</p>}
+                </div>
+                <button
+                  className="text-red-600 text-sm underline shrink-0"
+                  onClick={() => handleDeleteKeluarga(k.ID)}
+                >
+                  Hapus
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <form onSubmit={handleAddKeluarga} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input
+            className="input"
+            placeholder="Nama"
+            value={newKeluarga.NAMA}
+            onChange={(e) => setNewKeluarga((s) => ({ ...s, NAMA: e.target.value }))}
+          />
+          <input
+            className="input"
+            placeholder="Hubungan (misal: Istri, Anak)"
+            value={newKeluarga.HUBUNGAN}
+            onChange={(e) => setNewKeluarga((s) => ({ ...s, HUBUNGAN: e.target.value }))}
+          />
+          <input
+            className="input"
+            type="date"
+            value={newKeluarga.TANGGAL_LAHIR}
+            onChange={(e) => setNewKeluarga((s) => ({ ...s, TANGGAL_LAHIR: e.target.value }))}
+          />
+          <input
+            className="input"
+            placeholder="Pekerjaan"
+            value={newKeluarga.PEKERJAAN}
+            onChange={(e) => setNewKeluarga((s) => ({ ...s, PEKERJAAN: e.target.value }))}
+          />
+          <input
+            className="input sm:col-span-2"
+            placeholder="Keterangan (opsional)"
+            value={newKeluarga.KETERANGAN}
+            onChange={(e) => setNewKeluarga((s) => ({ ...s, KETERANGAN: e.target.value }))}
+          />
+          <button
+            type="submit"
+            className="btn-accent sm:col-span-2"
+            disabled={addingKeluarga || !newKeluarga.NAMA.trim()}
+          >
+            {addingKeluarga ? 'Menambahkan...' : '+ Tambah Anggota Keluarga'}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }

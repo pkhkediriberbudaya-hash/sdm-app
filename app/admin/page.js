@@ -21,19 +21,19 @@ export default function AdminHome() {
 
   return (
     <div className="p-8">
-      <h1 className="text-xl font-bold text-navy-700 mb-2">Selamat datang</h1>
+      <h1 className="text-xl font-bold text-brand-800 mb-2">Selamat datang</h1>
       {menus === null ? (
-        <p className="text-navy-400">Memuat menu...</p>
+        <p className="text-brand-400">Memuat menu...</p>
       ) : menus.length === 0 ? (
         <div className="card p-5 max-w-lg">
-          <p className="text-navy-700 mb-2 font-semibold">Belum ada menu terdaftar.</p>
-          <p className="text-sm text-navy-400">
+          <p className="text-brand-800 mb-2 font-semibold">Belum ada menu terdaftar.</p>
+          <p className="text-sm text-brand-400">
             Tambahkan baris pada sheet <b>Menus</b> di Google Sheets Anda dengan kolom KEY,
-            LABEL, SHEET_NAME, PRIMARY_KEY, ICON, ORDER. Lihat README untuk contoh data awal.
+            LABEL, SHEET_NAME, PRIMARY_KEY, ICON, ORDER.
           </p>
         </div>
       ) : (
-        <p className="text-navy-400">Mengarahkan ke menu pertama...</p>
+        <p className="text-brand-400">Mengarahkan ke menu pertama...</p>
       )}
     </div>
   );

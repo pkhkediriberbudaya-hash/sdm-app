@@ -38,7 +38,6 @@ export async function GET(req) {
       records = [];
     }
 
-    // Jangan kirim _row ke client (detail internal sheet, tidak perlu & tidak aman)
     const clean = records.map(({ _row, ...rest }) => rest);
 
     return NextResponse.json({ records: clean, desaList: myDesa });

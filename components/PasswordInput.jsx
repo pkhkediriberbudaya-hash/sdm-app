@@ -18,7 +18,7 @@ export default function PasswordInput({ value, onChange, placeholder, autoFocus 
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-700 text-sm font-medium"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-400 hover:text-brand-700 text-sm font-medium"
         tabIndex={-1}
       >
         {visible ? 'Sembunyikan' : 'Lihat'}

@@ -50,8 +50,7 @@ async function ensureMenuRegistered(kecamatan, sheetName) {
       });
     }
   } catch {
-    // Kalau sheet Menus belum ada / gagal dibaca, lewati saja pendaftaran menu
-    // (import KPM tetap boleh jalan tanpa ini).
+    // lewati saja kalau sheet Menus belum ada / gagal dibaca
   }
 }
 
@@ -100,8 +99,6 @@ export async function POST(req) {
         existing.KODE_BATCH = row.KODE_BATCH || existing.KODE_BATCH || '';
         existing.TAHAP_TERAKHIR = tahap;
         existing.TANGGAL_UPDATE = today;
-        // KELOMPOK, STATUS_KEPESERTAAN, CATATAN sengaja TIDAK disentuh —
-        // itu wilayah kelola manual pendamping.
         updated++;
       } else {
         byNokk.set(nokk, {

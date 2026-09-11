@@ -4,8 +4,8 @@
 
 html,
 body {
-  background-color: #f4f6f8;
-  color: #152840;
+  background-color: #f0f4f9;
+  color: #123d78;
 }
 
 * {
@@ -15,28 +15,28 @@ body {
 .card {
   background: white;
   border-radius: 0.75rem;
-  box-shadow: 0 1px 3px rgba(15, 28, 44, 0.08), 0 1px 2px rgba(15, 28, 44, 0.06);
+  box-shadow: 0 1px 3px rgba(13, 44, 88, 0.08), 0 1px 2px rgba(13, 44, 88, 0.06);
 }
 
 .input {
   width: 100%;
-  border: 1px solid #d3e0ec;
+  border: 1px solid #d3e6fa;
   border-radius: 0.5rem;
   padding: 0.55rem 0.75rem;
   font-size: 0.9rem;
   background: white;
-  color: #152840;
+  color: #123d78;
   transition: border-color 0.15s ease;
 }
 
 .input:focus {
   outline: none;
-  border-color: #1d3557;
-  box-shadow: 0 0 0 3px rgba(29, 53, 87, 0.12);
+  border-color: #1a56b0;
+  box-shadow: 0 0 0 3px rgba(26, 86, 176, 0.12);
 }
 
 .btn-primary {
-  background: #1d3557;
+  background: #1a56b0;
   color: white;
   font-weight: 600;
   padding: 0.6rem 1.25rem;
@@ -44,7 +44,7 @@ body {
   transition: background 0.15s ease;
 }
 .btn-primary:hover {
-  background: #152840;
+  background: #154a94;
 }
 .btn-primary:disabled {
   opacity: 0.6;
@@ -52,7 +52,7 @@ body {
 }
 
 .btn-accent {
-  background: #e9762b;
+  background: #16a34a;
   color: white;
   font-weight: 600;
   padding: 0.6rem 1.25rem;
@@ -60,27 +60,49 @@ body {
   transition: background 0.15s ease;
 }
 .btn-accent:hover {
-  background: #c95f1c;
+  background: #128a3e;
 }
 
 .btn-ghost {
   background: transparent;
-  color: #1d3557;
+  color: #1a56b0;
   font-weight: 600;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
-  border: 1px solid #d3e0ec;
+  border: 1px solid #d3e6fa;
 }
 .btn-ghost:hover {
-  background: #eef3f8;
+  background: #eaf3fc;
 }
 
 .label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #3d6690;
+  color: #3d7fd9;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-bottom: 0.25rem;
   display: block;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4b5f7a;
+  border-left: 3px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sidebar-link:hover {
+  background: #f0f6fd;
+}
+.sidebar-link.active {
+  background: #eaf3fc;
+  color: #154a94;
+  border-left-color: #1a56b0;
+  font-weight: 600;
 }

@@ -37,8 +37,8 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="p-6 sm:p-8">
-      <h1 className="text-xl font-bold text-navy-700 mb-1">🔑 Reset Password</h1>
-      <p className="text-sm text-navy-400 mb-6">
+      <h1 className="text-xl font-bold text-brand-800 mb-1">🔑 Reset Password</h1>
+      <p className="text-sm text-brand-400 mb-6">
         Reset password pendamping kembali ke default (= NIK). Pendamping akan diwajibkan
         mengganti password saat login berikutnya.
       </p>

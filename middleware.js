@@ -4,7 +4,6 @@ import { verifySessionToken } from './lib/auth';
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
 
-  // ==== Proteksi Admin ====
   const isAdminPublic =
     pathname === '/admin/login' || pathname === '/api/admin/login';
 
@@ -29,7 +28,6 @@ export async function middleware(req) {
     return NextResponse.next();
   }
 
-  // ==== Proteksi Pendamping (dicocokkan dengan NIP di URL) ====
   const pegawaiPageMatch = pathname.match(/^\/pegawai\/([^/]+)/);
   const pegawaiApiMatch = pathname.match(/^\/api\/pegawai\/([^/]+)/);
   const match = pegawaiPageMatch || pegawaiApiMatch;

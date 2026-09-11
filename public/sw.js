@@ -24,7 +24,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Aset build Next.js (hashed, aman di-cache selamanya): cache-first
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
       caches.match(request).then(
@@ -40,7 +39,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigasi halaman & request lain: network-first, fallback ke cache kalau offline
   event.respondWith(
     fetch(request)
       .then((res) => {

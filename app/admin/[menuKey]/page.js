@@ -15,7 +15,7 @@ export default function AdminMenuPage() {
   const [search, setSearch] = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit'
+  const [modalMode, setModalMode] = useState('create');
   const [modalRow, setModalRow] = useState(null);
   const [formValues, setFormValues] = useState({});
   const [saving, setSaving] = useState(false);
@@ -135,8 +135,8 @@ export default function AdminMenuPage() {
     return (
       <div className="p-8">
         <div className="card p-5 max-w-lg">
-          <p className="text-navy-700 font-semibold mb-1">Menu tidak ditemukan</p>
-          <p className="text-sm text-navy-400">
+          <p className="text-brand-800 font-semibold mb-1">Menu tidak ditemukan</p>
+          <p className="text-sm text-brand-400">
             Pastikan key <code>{menuKey}</code> terdaftar pada sheet <b>Menus</b>.
           </p>
         </div>
@@ -148,10 +148,10 @@ export default function AdminMenuPage() {
     <div className="p-6 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl font-bold text-navy-700">
+          <h1 className="text-xl font-bold text-brand-800">
             {menu ? `${menu.icon} ${menu.label}` : 'Memuat...'}
           </h1>
-          <p className="text-sm text-navy-400">
+          <p className="text-sm text-brand-400">
             {records.length} baris data{menu ? ` · sheet "${menu.sheetName}"` : ''}
           </p>
         </div>
@@ -177,40 +177,34 @@ export default function AdminMenuPage() {
 
       <div className="card overflow-x-auto">
         {loading ? (
-          <p className="p-6 text-navy-400">Memuat data...</p>
+          <p className="p-6 text-brand-400">Memuat data...</p>
         ) : filtered.length === 0 ? (
-          <p className="p-6 text-navy-400">Belum ada data.</p>
+          <p className="p-6 text-brand-400">Belum ada data.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-navy-100 text-left">
+              <tr className="border-b border-brand-100 text-left">
                 {previewHeaders.map((h) => (
-                  <th key={h} className="px-4 py-3 font-semibold text-navy-700 whitespace-nowrap">
+                  <th key={h} className="px-4 py-3 font-semibold text-brand-800 whitespace-nowrap">
                     {h}
                   </th>
                 ))}
-                <th className="px-4 py-3 font-semibold text-navy-700 text-right">Aksi</th>
+                <th className="px-4 py-3 font-semibold text-brand-800 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((row) => (
-                <tr key={row._row} className="border-b border-navy-50 hover:bg-navy-50">
+                <tr key={row._row} className="border-b border-brand-50 hover:bg-brand-50">
                   {previewHeaders.map((h) => (
                     <td key={h} className="px-4 py-3 whitespace-nowrap max-w-[220px] truncate">
                       {row[h]}
                     </td>
                   ))}
                   <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <button
-                      className="text-navy-600 underline text-sm mr-3"
-                      onClick={() => openEdit(row)}
-                    >
+                    <button className="text-brand-600 underline text-sm mr-3" onClick={() => openEdit(row)}>
                       Edit
                     </button>
-                    <button
-                      className="text-red-600 underline text-sm"
-                      onClick={() => handleDelete(row)}
-                    >
+                    <button className="text-red-600 underline text-sm" onClick={() => handleDelete(row)}>
                       Hapus
                     </button>
                   </td>
@@ -222,16 +216,13 @@ export default function AdminMenuPage() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-navy-900/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-brand-900/50 flex items-center justify-center p-4 z-50">
           <div className="card w-full max-w-2xl max-h-[85vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-navy-100 flex items-center justify-between">
-              <h2 className="font-bold text-navy-700">
+            <div className="px-6 py-4 border-b border-brand-100 flex items-center justify-between">
+              <h2 className="font-bold text-brand-800">
                 {modalMode === 'create' ? 'Tambah Data' : 'Edit Data'}
               </h2>
-              <button
-                className="text-navy-400 text-xl leading-none"
-                onClick={() => setModalOpen(false)}
-              >
+              <button className="text-brand-400 text-xl leading-none" onClick={() => setModalOpen(false)}>
                 &times;
               </button>
             </div>
@@ -243,9 +234,7 @@ export default function AdminMenuPage() {
                     <input
                       className="input"
                       value={formValues[h] ?? ''}
-                      onChange={(e) =>
-                        setFormValues((f) => ({ ...f, [h]: e.target.value }))
-                      }
+                      onChange={(e) => setFormValues((f) => ({ ...f, [h]: e.target.value }))}
                     />
                   </div>
                 ))}
@@ -258,11 +247,7 @@ export default function AdminMenuPage() {
               )}
 
               <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => setModalOpen(false)}
-                >
+                <button type="button" className="btn-ghost" onClick={() => setModalOpen(false)}>
                   Batal
                 </button>
                 <button type="submit" className="btn-primary" disabled={saving}>

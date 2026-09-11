@@ -27,7 +27,6 @@ export async function POST(req) {
     let mustChange = false;
 
     if (!cred) {
-      // Login pertama kali: password default harus sama dengan NIK
       const nik = (pegawai.NIK || '').trim();
       if (!nik || password !== nik) {
         return NextResponse.json({ error: 'NIP atau password salah' }, { status: 401 });

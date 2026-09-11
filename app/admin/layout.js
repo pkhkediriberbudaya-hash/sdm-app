@@ -27,40 +27,38 @@ export default function AdminLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen flex bg-navy-50">
-      <aside className="w-60 bg-navy-800 text-white flex flex-col shrink-0">
-        <div className="px-5 py-5 border-b border-navy-600">
-          <p className="font-bold">SIM SDM</p>
-          <p className="text-navy-100 text-xs">Panel Admin</p>
+    <div className="min-h-screen flex bg-[#f0f4f9]">
+      <aside className="w-64 bg-white border-r border-brand-100 flex flex-col shrink-0">
+        <div className="px-5 py-4 flex items-center gap-2 border-b border-brand-50">
+          <div className="w-8 h-8 rounded-lg bg-brand-gradient flex items-center justify-center text-white font-bold text-sm">
+            S
+          </div>
+          <div>
+            <p className="font-bold text-brand-800 text-sm leading-tight">SIM SDM</p>
+            <p className="text-[10px] text-brand-400">Panel Admin</p>
+          </div>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1">
+
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           <a
             href="/admin/kpm-upload"
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition ${
-              pathname === '/admin/kpm-upload'
-                ? 'bg-rust-500 text-white'
-                : 'text-navy-100 hover:bg-navy-600 hover:text-white'
-            }`}
+            className={`sidebar-link ${pathname === '/admin/kpm-upload' ? 'active' : ''}`}
           >
             <span>📥</span>
             <span>Upload Data KPM</span>
           </a>
           <a
             href="/admin/reset-password"
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition ${
-              pathname === '/admin/reset-password'
-                ? 'bg-rust-500 text-white'
-                : 'text-navy-100 hover:bg-navy-600 hover:text-white'
-            }`}
+            className={`sidebar-link ${pathname === '/admin/reset-password' ? 'active' : ''}`}
           >
             <span>🔑</span>
             <span>Reset Password</span>
           </a>
-          <div className="border-t border-navy-600 my-2" />
+          <div className="border-t border-brand-50 my-2" />
           {loadingMenus ? (
-            <p className="text-navy-100 text-sm px-2">Memuat menu...</p>
+            <p className="text-brand-400 text-sm px-2">Memuat menu...</p>
           ) : menus.length === 0 ? (
-            <p className="text-navy-100 text-sm px-2">
+            <p className="text-brand-400 text-sm px-2">
               Belum ada menu terdaftar di sheet &quot;Menus&quot;.
             </p>
           ) : (
@@ -68,15 +66,7 @@ export default function AdminLayout({ children }) {
               const href = `/admin/${encodeURIComponent(m.key)}`;
               const active = pathname === href;
               return (
-                <a
-                  key={m.key}
-                  href={href}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    active
-                      ? 'bg-rust-500 text-white'
-                      : 'text-navy-100 hover:bg-navy-600 hover:text-white'
-                  }`}
-                >
+                <a key={m.key} href={href} className={`sidebar-link ${active ? 'active' : ''}`}>
                   <span>{m.icon}</span>
                   <span>{m.label}</span>
                 </a>
@@ -84,16 +74,22 @@ export default function AdminLayout({ children }) {
             })
           )}
         </nav>
-        <div className="px-3 py-4 border-t border-navy-600">
-          <button
-            onClick={handleLogout}
-            className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-navy-100 hover:bg-navy-600 hover:text-white"
-          >
-            ↩ Keluar
+        <div className="px-3 py-4 border-t border-brand-50">
+          <button onClick={handleLogout} className="sidebar-link w-full text-left">
+            <span>↩</span>
+            <span>Keluar</span>
           </button>
         </div>
       </aside>
-      <main className="flex-1 min-w-0">{children}</main>
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="bg-brand-gradient-header text-white px-6 py-4 flex items-center justify-between shadow">
+          <p className="font-semibold">Panel Admin</p>
+          <span className="text-sm text-brand-100">
+            {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
+        </header>
+        <main className="flex-1 min-w-0">{children}</main>
+      </div>
     </div>
   );
 }

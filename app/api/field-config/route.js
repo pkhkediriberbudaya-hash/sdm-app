@@ -16,7 +16,6 @@ export async function GET() {
       .filter((c) => c.fieldName);
     return NextResponse.json({ config });
   } catch (e) {
-    // Sheet FieldConfig belum dibuat -> anggap saja belum ada konfigurasi tambahan
     return NextResponse.json({ config: [] });
   }
 }
