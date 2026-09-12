@@ -52,6 +52,11 @@ FIELD_NAME | GROUP_LABEL | ORDER | INPUT_TYPE
 Untuk mengelompokkan field tambahan yang ditaruh admin langsung di sheet `SDM`. Field yang belum
 didaftarkan di sini tetap muncul otomatis (masuk grup "Data Lainnya").
 
+### Tab `MasterKelompok` (opsional, untuk saran nama kelompok)
+Import dari file `MasterKelompok.xlsx` yang sudah disiapkan (File → Import → Insert new sheet,
+lalu rename tab jadi persis `MasterKelompok`). Berisi data ketua kelompok per desa dampingan,
+dipakai sebagai saran otomatis saat pendamping mengisi field "Kelompok" di Data KPM.
+
 ### Tab `Menus`
 ```
 KEY      | LABEL            | SHEET_NAME      | PRIMARY_KEY | ICON | ORDER

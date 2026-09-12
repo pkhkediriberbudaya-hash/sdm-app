@@ -20,7 +20,12 @@ const STATUS_OPTIONS = [
   'Sukses PPSE',
 ];
 
-const EXIT_STATUSES = ['Sukses Graduasi Mandiri', 'Sukses PPSE'];
+const STATUS_CHIPS = [
+  { key: 'Aktif', label: 'Aktif', match: (s) => s === 'Aktif' || !s },
+  { key: 'Pengaduan', label: 'Pengaduan', match: (s) => s === 'Pengaduan' },
+  { key: 'Graduasi', label: 'Graduasi', match: (s) => (s || '').includes('Graduasi') },
+  { key: 'PPSE', label: 'PPSE', match: (s) => (s || '').includes('PPSE') },
+];
 
 export default function DataKpmPage() {
   const params = useParams();
@@ -38,8 +43,13 @@ export default function DataKpmPage() {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
 
+  const [masterKelompok, setMasterKelompok] = useState([]);
+
   const [search, setSearch] = useState('');
-  const [showExited, setShowExited] = useState(false);
+  const [desaFilter, setDesaFilter] = useState('');
+  const [kelompokFilter, setKelompokFilter] = useState('');
+  const [statusChip, setStatusChip] = useState(null);
+
   const [selectedKpm, setSelectedKpm] = useState(null);
   const [editForm, setEditForm] = useState({ KELOMPOK: '', STATUS_KEPESERTAAN: '', CATATAN: '' });
   const [saving, setSaving] = useState(false);
@@ -66,6 +76,12 @@ export default function DataKpmPage() {
         if (list.length > 0) setSelectedKecamatan(list[0].KECAMATAN);
       })
       .finally(() => setLoadingDesa(false));
+
+    fetch('/api/kelompok')
+      .then((res) => res.json())
+      .then((data) => setMasterKelompok(data.records || []))
+      .catch(() => {});
+
     refreshQueueCount();
   }, [nip, refreshQueueCount]);
 
@@ -73,6 +89,8 @@ export default function DataKpmPage() {
     if (!kecamatan) return;
     setLoadingKpm(true);
     setError('');
+    setDesaFilter('');
+    setKelompokFilter('');
     try {
       const res = await fetch(`/api/kpm?kecamatan=${encodeURIComponent(kecamatan)}`);
       if (!res.ok) throw new Error('offline-or-error');
@@ -171,11 +189,31 @@ export default function DataKpmPage() {
     }
   }
 
+  const desaOptions = useMemo(
+    () => Array.from(new Set(records.map((r) => r.DESA).filter(Boolean))).sort(),
+    [records]
+  );
+
+  const kelompokOptions = useMemo(() => {
+    const source = desaFilter ? records.filter((r) => r.DESA === desaFilter) : records;
+    return Array.from(new Set(source.map((r) => r.KELOMPOK).filter(Boolean))).sort();
+  }, [records, desaFilter]);
+
+  // Daftar kelompok resmi (dari MasterKelompok) untuk desa yang sedang diedit —
+  // dipakai sebagai saran di form edit supaya penamaan kelompok konsisten
+  const masterKelompokForDesa = useCallback(
+    (desa) => masterKelompok.filter((k) => k.DESA_DAMPINGAN === desa),
+    [masterKelompok]
+  );
+
   const filtered = useMemo(() => {
     let list = records;
-    if (!showExited) {
-      list = list.filter((r) => !EXIT_STATUSES.includes(r.STATUS_KEPESERTAAN));
+    if (statusChip) {
+      const chip = STATUS_CHIPS.find((c) => c.key === statusChip);
+      list = list.filter((r) => chip.match(r.STATUS_KEPESERTAAN));
     }
+    if (desaFilter) list = list.filter((r) => r.DESA === desaFilter);
+    if (kelompokFilter) list = list.filter((r) => r.KELOMPOK === kelompokFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -186,10 +224,10 @@ export default function DataKpmPage() {
       );
     }
     return list;
-  }, [records, showExited, search]);
+  }, [records, statusChip, desaFilter, kelompokFilter, search]);
 
   const summary = useMemo(() => {
-    const s = { total: records.length, aktif: 0, pengaduan: 0, graduasi: 0, ppse: 0 };
+    const s = { aktif: 0, pengaduan: 0, graduasi: 0, ppse: 0 };
     records.forEach((r) => {
       const status = r.STATUS_KEPESERTAAN || 'Aktif';
       if (status === 'Aktif') s.aktif++;
@@ -199,6 +237,10 @@ export default function DataKpmPage() {
     });
     return s;
   }, [records]);
+
+  function toggleChip(key) {
+    setStatusChip((prev) => (prev === key ? null : key));
+  }
 
   if (loadingDesa) {
     return (
@@ -227,7 +269,7 @@ export default function DataKpmPage() {
   }
 
   return (
-    <div className="px-4 py-6 pb-16 max-w-3xl mx-auto space-y-6">
+    <div className="px-4 py-6 pb-16 max-w-5xl mx-auto space-y-6">
       {queueCount > 0 && (
         <div className="card p-4 bg-amber-50 border border-amber-200 flex items-center justify-between gap-3">
           <p className="text-sm text-amber-800">{queueCount} perubahan belum tersinkron ke server.</p>
@@ -274,77 +316,121 @@ export default function DataKpmPage() {
           </p>
         )}
 
-        {loadingKpm ? (
-          <p className="text-sm text-brand-400">Memuat data KPM...</p>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-            <div className="bg-brand-50 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-brand-800">{summary.aktif}</p>
-              <p className="text-xs text-brand-400">Aktif</p>
-            </div>
-            <div className="bg-brand-50 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-brand-800">{summary.pengaduan}</p>
-              <p className="text-xs text-brand-400">Pengaduan</p>
-            </div>
-            <div className="bg-brand-50 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-brand-800">{summary.graduasi}</p>
-              <p className="text-xs text-brand-400">Graduasi</p>
-            </div>
-            <div className="bg-brand-50 rounded-lg p-3 text-center">
-              <p className="text-lg font-bold text-brand-800">{summary.ppse}</p>
-              <p className="text-xs text-brand-400">PPSE</p>
-            </div>
-          </div>
-        )}
+        {/* Ringkasan yang bisa diklik sebagai filter status */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+          {STATUS_CHIPS.map((chip) => (
+            <button
+              key={chip.key}
+              onClick={() => toggleChip(chip.key)}
+              className={`rounded-lg p-3 text-center transition ${
+                statusChip === chip.key
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-brand-50 text-brand-800 hover:bg-brand-100'
+              }`}
+            >
+              <p className="text-lg font-bold">
+                {chip.key === 'Aktif'
+                  ? summary.aktif
+                  : chip.key === 'Pengaduan'
+                  ? summary.pengaduan
+                  : chip.key === 'Graduasi'
+                  ? summary.graduasi
+                  : summary.ppse}
+              </p>
+              <p className={`text-xs ${statusChip === chip.key ? 'text-brand-100' : 'text-brand-400'}`}>
+                {chip.label}
+              </p>
+            </button>
+          ))}
+        </div>
 
-        <div className="flex flex-wrap gap-2 mb-3">
+        {/* Filter pencarian & dropdown desa/kelompok */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
           <input
-            className="input flex-1 min-w-[160px]"
-            placeholder="Cari nama / NOKK / desa..."
+            className="input"
+            placeholder="Cari nama / NOKK..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <label className="flex items-center gap-2 text-sm text-brand-600 whitespace-nowrap">
-            <input
-              type="checkbox"
-              checked={showExited}
-              onChange={(e) => setShowExited(e.target.checked)}
-            />
-            Tampilkan yang sudah keluar
-          </label>
+          <select
+            className="input"
+            value={desaFilter}
+            onChange={(e) => {
+              setDesaFilter(e.target.value);
+              setKelompokFilter('');
+            }}
+          >
+            <option value="">Semua Desa</option>
+            {desaOptions.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+          <select
+            className="input"
+            value={kelompokFilter}
+            onChange={(e) => setKelompokFilter(e.target.value)}
+          >
+            <option value="">Semua Kelompok</option>
+            {kelompokOptions.map((k) => (
+              <option key={k} value={k}>
+                {k}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {filtered.length === 0 ? (
+        {loadingKpm ? (
+          <p className="text-sm text-brand-400 py-4 text-center">Memuat data KPM...</p>
+        ) : filtered.length === 0 ? (
           <p className="text-sm text-brand-400 py-4 text-center">Tidak ada data.</p>
         ) : (
-          <ul className="divide-y divide-brand-100">
-            {filtered.map((r) => (
-              <li
-                key={r.NOKK}
-                className="py-3 flex items-start justify-between gap-3 cursor-pointer"
-                onClick={() => openDetail(r)}
-              >
-                <div>
-                  <p className="font-semibold text-brand-800">{r.NAMA}</p>
-                  <p className="text-sm text-brand-400">
-                    {r.DESA}
-                    {r.KELOMPOK ? ` · ${r.KELOMPOK}` : ''}
-                  </p>
-                </div>
-                <span
-                  className={`text-xs font-medium px-2 py-1 rounded-full shrink-0 ${
-                    r.STATUS_KEPESERTAAN === 'Pengaduan'
-                      ? 'bg-red-100 text-red-700'
-                      : EXIT_STATUSES.includes(r.STATUS_KEPESERTAAN)
-                      ? 'bg-brand-100 text-brand-600'
-                      : 'bg-green-100 text-green-700'
-                  }`}
-                >
-                  {r.STATUS_KEPESERTAAN || 'Aktif'}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-brand-100 text-left">
+                  <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Nama</th>
+                  <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Alamat</th>
+                  <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Desa</th>
+                  <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Kelompok</th>
+                  <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Status</th>
+                  <th className="px-3 py-2 font-semibold text-brand-800 text-right whitespace-nowrap">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r) => (
+                  <tr key={r.NOKK} className="border-b border-brand-50 hover:bg-brand-50">
+                    <td className="px-3 py-2 whitespace-nowrap font-medium text-brand-800">{r.NAMA}</td>
+                    <td className="px-3 py-2 max-w-[180px] truncate">{r.ALAMAT}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{r.DESA}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{r.KELOMPOK || '-'}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span
+                        className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          r.STATUS_KEPESERTAAN === 'Pengaduan'
+                            ? 'bg-red-100 text-red-700'
+                            : (r.STATUS_KEPESERTAAN || '').includes('Sukses')
+                            ? 'bg-brand-100 text-brand-600'
+                            : 'bg-green-100 text-green-700'
+                        }`}
+                      >
+                        {r.STATUS_KEPESERTAAN || 'Aktif'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                      <button
+                        className="text-brand-600 underline text-sm"
+                        onClick={() => openDetail(r)}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -362,16 +448,23 @@ export default function DataKpmPage() {
             </div>
             <form onSubmit={handleSaveDetail} className="p-6 space-y-4">
               <p className="text-sm text-brand-400">
-                NOKK: {selectedKpm.NOKK} · {selectedKpm.DESA}
+                NOKK: {selectedKpm.NOKK} · {selectedKpm.ALAMAT}, {selectedKpm.DESA}
               </p>
 
               <div>
                 <label className="label">Kelompok</label>
                 <input
                   className="input"
+                  list="kelompok-suggestions"
                   value={editForm.KELOMPOK}
                   onChange={(e) => setEditForm((f) => ({ ...f, KELOMPOK: e.target.value }))}
+                  placeholder="Ketik atau pilih dari saran"
                 />
+                <datalist id="kelompok-suggestions">
+                  {masterKelompokForDesa(selectedKpm.DESA).map((k) => (
+                    <option key={k.NAMA_KELOMPOK} value={k.NAMA_KELOMPOK} />
+                  ))}
+                </datalist>
               </div>
 
               <div>

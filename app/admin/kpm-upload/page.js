@@ -2,72 +2,98 @@
 
 import { useState } from 'react';
 import { WILAYAH_KEDIRI } from '@/lib/wilayahKediri';
-import { parseCsv, mapColumns, normalizeRows, guessTahap } from '@/lib/csvParser';
+import { parseCsv, mapColumns, normalizeRows } from '@/lib/csvParser';
+
+const TAHAP_MONTHS = { 1: 'JAN-MAR', 2: 'APR-JUN', 3: 'JUL-SEP', 4: 'OKT-DES' };
+
+function currentDefaults() {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const tahapNum = month <= 3 ? 1 : month <= 6 ? 2 : month <= 9 ? 3 : 4;
+  return { tahapNum, year: now.getFullYear() };
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
 
 export default function KpmUploadPage() {
   const kecamatanList = Object.keys(WILAYAH_KEDIRI).sort();
+  const defaults = currentDefaults();
 
   const [kecamatan, setKecamatan] = useState('');
-  const [tahap, setTahap] = useState(guessTahap());
-  const [fileName, setFileName] = useState('');
-  const [parsed, setParsed] = useState(null);
+  const [tahapNum, setTahapNum] = useState(defaults.tahapNum);
+  const [tahunTahap, setTahunTahap] = useState(defaults.year);
+  const tahapLabel = `TAHAP ${tahapNum} (${TAHAP_MONTHS[tahapNum]} ${tahunTahap})`;
+
+  const [fileResults, setFileResults] = useState([]); // [{name, headers, rows, mapping, missing}]
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
-  function handleFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const yearOptions = [tahunTahap - 1, tahunTahap, tahunTahap + 1];
+
+  async function handleFiles(e) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
     setError('');
     setResult(null);
-    setFileName(file.name);
 
     const guess = kecamatanList.find((k) =>
-      file.name.toLowerCase().includes(k.toLowerCase())
+      files.some((f) => f.name.toLowerCase().includes(k.toLowerCase()))
     );
     if (guess) setKecamatan(guess);
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const text = ev.target.result;
-        const { headers, rows } = parseCsv(text);
-        const { mapping, missing } = mapColumns(headers);
-        setParsed({ headers, rows, mapping, missing });
-      } catch {
-        setError('Gagal membaca file. Pastikan formatnya CSV yang benar.');
-        setParsed(null);
-      }
-    };
-    reader.readAsText(file);
+    try {
+      const results = await Promise.all(
+        files.map(async (file) => {
+          const text = await readFileAsText(file);
+          const { headers, rows } = parseCsv(text);
+          const { mapping, missing } = mapColumns(headers);
+          return { name: file.name, headers, rows, mapping, missing };
+        })
+      );
+      setFileResults(results);
+    } catch {
+      setError('Gagal membaca salah satu file. Pastikan semua file berformat CSV yang benar.');
+      setFileResults([]);
+    }
   }
+
+  const validFiles = fileResults.filter((f) => f.missing.length === 0);
+  const invalidFiles = fileResults.filter((f) => f.missing.length > 0);
+  const totalRows = validFiles.reduce((sum, f) => sum + f.rows.length, 0);
 
   async function handleSubmit() {
     if (!kecamatan) {
       setError('Pilih kecamatan tujuan dulu.');
       return;
     }
-    if (!parsed || parsed.missing.length > 0) {
-      setError('Ada kolom wajib yang belum terpetakan. Periksa lagi file CSV-nya.');
+    if (validFiles.length === 0) {
+      setError('Tidak ada file valid untuk diproses.');
       return;
     }
     setSubmitting(true);
     setError('');
     setResult(null);
     try {
-      const normalizedRows = normalizeRows(parsed.rows, parsed.mapping);
+      const combinedRows = validFiles.flatMap((f) => normalizeRows(f.rows, f.mapping));
       const res = await fetch('/api/admin/kpm-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kecamatan, tahap, rows: normalizedRows }),
+        body: JSON.stringify({ kecamatan, tahap: tahapLabel, rows: combinedRows }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Gagal memproses import');
       } else {
         setResult(data);
-        setParsed(null);
-        setFileName('');
+        setFileResults([]);
       }
     } catch {
       setError('Gagal terhubung ke server.');
@@ -76,35 +102,20 @@ export default function KpmUploadPage() {
     }
   }
 
-  const fieldLabels = {
-    NOKK: 'NOKK (wajib)',
-    NIK: 'NIK',
-    NAMA: 'Nama (wajib)',
-    BANK: 'Bank Penyalur',
-    DESA: 'Desa/Kelurahan (wajib)',
-    ALAMAT: 'Alamat',
-    STATUS_PENYALURAN: 'Status Penyaluran',
-    KODE_BATCH: 'Kode Batch',
-  };
-
   return (
     <div className="p-6 sm:p-8">
       <h1 className="text-xl font-bold text-brand-800 mb-1">📥 Upload Data KPM</h1>
       <p className="text-sm text-brand-400 mb-6">
-        Upload file CSV hasil unduhan SIKS-NG per kecamatan. Data akan digabung ke tab{' '}
-        <code>KPM_[Kecamatan]</code>.
+        Bisa upload lebih dari satu file CSV sekaligus untuk kecamatan yang sama (misal per bank
+        penyalur / per batch) — semua akan digabung jadi satu sebelum disimpan.
       </p>
 
       <div className="card p-5 max-w-2xl space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="sm:col-span-1">
             <label className="label">Kecamatan Tujuan</label>
-            <select
-              className="input"
-              value={kecamatan}
-              onChange={(e) => setKecamatan(e.target.value)}
-            >
-              <option value="">-- Pilih Kecamatan --</option>
+            <select className="input" value={kecamatan} onChange={(e) => setKecamatan(e.target.value)}>
+              <option value="">-- Pilih --</option>
               {kecamatanList.map((k) => (
                 <option key={k} value={k}>
                   {k}
@@ -113,23 +124,41 @@ export default function KpmUploadPage() {
             </select>
           </div>
           <div>
-            <label className="label">Label Tahap</label>
-            <input
+            <label className="label">Tahap</label>
+            <select
               className="input"
-              value={tahap}
-              onChange={(e) => setTahap(e.target.value)}
-              placeholder="Misal: TAHAP 4 (OKT-DES 2026)"
-            />
-            <p className="text-xs text-brand-400 mt-1">
-              Tebakan otomatis dari tanggal hari ini — boleh diganti manual.
-            </p>
+              value={tahapNum}
+              onChange={(e) => setTahapNum(Number(e.target.value))}
+            >
+              {[1, 2, 3, 4].map((n) => (
+                <option key={n} value={n}>
+                  Tahap {n} ({TAHAP_MONTHS[n]})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Tahun</label>
+            <select
+              className="input"
+              value={tahunTahap}
+              onChange={(e) => setTahunTahap(Number(e.target.value))}
+            >
+              {yearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
+        <p className="text-xs text-brand-400 -mt-2">
+          Label yang tersimpan: <b>{tahapLabel}</b>
+        </p>
 
         <div>
-          <label className="label">File CSV</label>
-          <input type="file" accept=".csv,.txt" onChange={handleFile} className="input" />
-          {fileName && <p className="text-xs text-brand-400 mt-1">File: {fileName}</p>}
+          <label className="label">File CSV (boleh pilih beberapa sekaligus)</label>
+          <input type="file" accept=".csv,.txt" multiple onChange={handleFiles} className="input" />
         </div>
 
         {error && (
@@ -138,64 +167,32 @@ export default function KpmUploadPage() {
           </p>
         )}
 
-        {parsed && (
+        {fileResults.length > 0 && (
           <div className="border border-brand-100 rounded-lg p-4 space-y-3">
             <p className="text-sm text-brand-800 font-semibold">
-              Terbaca {parsed.rows.length} baris, {parsed.headers.length} kolom.
+              {fileResults.length} file terbaca, total {totalRows} baris siap diproses dari{' '}
+              {validFiles.length} file valid.
             </p>
-
-            <div>
-              <p className="text-xs font-semibold text-brand-400 uppercase mb-1">
-                Pemetaan Kolom
+            <ul className="text-sm space-y-2">
+              {fileResults.map((f) => (
+                <li key={f.name} className="border-b border-brand-50 pb-2 last:border-0">
+                  <p className="font-medium text-brand-700">{f.name}</p>
+                  <p className="text-xs text-brand-400">{f.rows.length} baris</p>
+                  {f.missing.length > 0 ? (
+                    <p className="text-xs text-red-600">
+                      ❌ Kolom wajib tidak ketemu: {f.missing.join(', ')} — file ini dilewati
+                    </p>
+                  ) : (
+                    <p className="text-xs text-green-700">✓ Kolom lengkap, siap diproses</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {invalidFiles.length > 0 && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                {invalidFiles.length} file dilewati karena kolom wajib tidak lengkap. File lainnya
+                tetap bisa diproses.
               </p>
-              <ul className="text-sm space-y-1">
-                {Object.entries(fieldLabels).map(([field, label]) => (
-                  <li key={field} className="flex justify-between">
-                    <span className="text-brand-600">{label}</span>
-                    <span className={parsed.mapping[field] ? 'text-green-700' : 'text-red-600'}>
-                      {parsed.mapping[field] || 'tidak ditemukan'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {parsed.missing.length > 0 && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                Kolom wajib belum ketemu: {parsed.missing.join(', ')}.
-              </p>
-            )}
-
-            {parsed.rows.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-brand-400 uppercase mb-1">
-                  Contoh 3 Baris Pertama
-                </p>
-                <div className="overflow-x-auto">
-                  <table className="text-xs w-full">
-                    <thead>
-                      <tr>
-                        {parsed.headers.map((h) => (
-                          <th key={h} className="text-left pr-3 py-1 text-brand-600">
-                            {h}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {parsed.rows.slice(0, 3).map((row, i) => (
-                        <tr key={i}>
-                          {parsed.headers.map((h) => (
-                            <td key={h} className="pr-3 py-1 whitespace-nowrap">
-                              {row[h]}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
             )}
           </div>
         )}
@@ -211,9 +208,9 @@ export default function KpmUploadPage() {
         <button
           className="btn-primary w-full"
           onClick={handleSubmit}
-          disabled={!parsed || parsed.missing.length > 0 || !kecamatan || submitting}
+          disabled={validFiles.length === 0 || !kecamatan || submitting}
         >
-          {submitting ? 'Memproses...' : 'Proses Import'}
+          {submitting ? 'Memproses...' : `Proses Import (${validFiles.length} file)`}
         </button>
       </div>
     </div>

@@ -127,9 +127,13 @@ export default function PegawaiLayout({ children }) {
             <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
               🔔
             </span>
-            <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-              👤
-            </span>
+            <button
+              onClick={handleLogout}
+              title="Keluar"
+              className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30"
+            >
+              🚪
+            </button>
           </div>
         </header>
         <main className="flex-1 min-w-0">{children}</main>
