@@ -27,6 +27,26 @@ const STATUS_CHIPS = [
   { key: 'PPSE', label: 'PPSE', match: (s) => (s || '').includes('PPSE') },
 ];
 
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false);
+  if (!text) return null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard?.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+      }}
+      title="Salin"
+      className="text-brand-400 hover:text-brand-700 ml-1"
+    >
+      {copied ? '✓' : '📋'}
+    </button>
+  );
+}
+
 export default function DataKpmPage() {
   const params = useParams();
   const router = useRouter();
@@ -386,50 +406,68 @@ export default function DataKpmPage() {
         ) : filtered.length === 0 ? (
           <p className="text-sm text-brand-400 py-4 text-center">Tidak ada data.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-brand-100 text-left">
-                  <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Nama</th>
-                  <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Alamat</th>
-                  <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Desa</th>
-                  <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Kelompok</th>
-                  <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Status</th>
-                  <th className="px-3 py-2 font-semibold text-brand-800 text-right whitespace-nowrap">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r) => (
-                  <tr key={r.NOKK} className="border-b border-brand-50 hover:bg-brand-50">
-                    <td className="px-3 py-2 whitespace-nowrap font-medium text-brand-800">{r.NAMA}</td>
-                    <td className="px-3 py-2 max-w-[180px] truncate">{r.ALAMAT}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{r.DESA}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{r.KELOMPOK || '-'}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <span
-                        className={`text-xs font-medium px-2 py-1 rounded-full ${
-                          r.STATUS_KEPESERTAAN === 'Pengaduan'
-                            ? 'bg-red-100 text-red-700'
-                            : (r.STATUS_KEPESERTAAN || '').includes('Sukses')
-                            ? 'bg-brand-100 text-brand-600'
-                            : 'bg-green-100 text-green-700'
-                        }`}
-                      >
-                        {r.STATUS_KEPESERTAAN || 'Aktif'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right whitespace-nowrap">
-                      <button
-                        className="text-brand-600 underline text-sm"
-                        onClick={() => openDetail(r)}
-                      >
-                        Edit
-                      </button>
-                    </td>
+          <div className="border border-brand-100 rounded-lg overflow-hidden">
+            <div className="overflow-auto max-h-[65vh]">
+              <table className="w-full text-sm border-collapse">
+                <thead className="sticky top-0 z-10 bg-brand-50">
+                  <tr className="border-b border-brand-100 text-left">
+                    <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Nama</th>
+                    <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">NOKK</th>
+                    <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">NIK</th>
+                    <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Alamat</th>
+                    <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Desa</th>
+                    <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Kelompok</th>
+                    <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Status Penyaluran</th>
+                    <th className="px-3 py-2 font-semibold text-brand-800 whitespace-nowrap">Status Kepesertaan</th>
+                    <th className="px-3 py-2 font-semibold text-brand-800 text-right whitespace-nowrap">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filtered.map((r) => (
+                    <tr key={r.NOKK} className="border-b border-brand-50 hover:bg-brand-50 bg-white">
+                      <td className="px-3 py-2 whitespace-nowrap font-medium text-brand-800">
+                        <span className="inline-flex items-center">
+                          {r.NAMA}
+                          <CopyButton text={r.NAMA} />
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap font-mono text-xs">
+                        <span className="inline-flex items-center">
+                          {r.NOKK}
+                          <CopyButton text={r.NOKK} />
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap font-mono text-xs">{r.NIK}</td>
+                      <td className="px-3 py-2 max-w-[180px] truncate">{r.ALAMAT}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{r.DESA}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{r.KELOMPOK || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{r.STATUS_PENYALURAN || '-'}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <span
+                          className={`text-xs font-medium px-2 py-1 rounded-full ${
+                            r.STATUS_KEPESERTAAN === 'Pengaduan'
+                              ? 'bg-red-100 text-red-700'
+                              : (r.STATUS_KEPESERTAAN || '').includes('Sukses')
+                              ? 'bg-brand-100 text-brand-600'
+                              : 'bg-green-100 text-green-700'
+                          }`}
+                        >
+                          {r.STATUS_KEPESERTAAN || 'Aktif'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        <button
+                          className="text-brand-600 underline text-sm"
+                          onClick={() => openDetail(r)}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

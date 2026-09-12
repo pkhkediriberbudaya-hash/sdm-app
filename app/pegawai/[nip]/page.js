@@ -194,22 +194,30 @@ export default function PegawaiPage() {
     e.preventDefault();
     if (!selectedKecamatan || selectedDesaSet.size === 0) return;
     setAddingDesa(true);
+    setMessage(null);
     try {
       const existing = new Set(
         desaList.filter((d) => d.KECAMATAN === selectedKecamatan).map((d) => d.NAMA_DESA)
       );
       const toAdd = Array.from(selectedDesaSet).filter((d) => !existing.has(d));
-      await Promise.all(
-        toAdd.map((namaDesa) =>
-          fetch('/api/desa', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ NAMA_DESA: namaDesa, KECAMATAN: selectedKecamatan }),
-          })
-        )
-      );
-      setSelectedDesaSet(new Set());
-      loadDesa();
+      const items = toAdd.map((namaDesa) => ({
+        NAMA_DESA: namaDesa,
+        KECAMATAN: selectedKecamatan,
+      }));
+      const res = await fetch('/api/desa/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ type: 'error', text: data.error || 'Gagal menambahkan desa dampingan.' });
+      } else {
+        setSelectedDesaSet(new Set());
+        loadDesa();
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Gagal terhubung ke server.' });
     } finally {
       setAddingDesa(false);
     }

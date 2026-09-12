@@ -106,7 +106,7 @@ export default function PegawaiLayout({ children }) {
       )}
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="bg-brand-gradient-header text-white px-4 py-4 flex items-center justify-between shadow shrink-0">
+        <header className="sticky top-0 z-20 bg-brand-gradient-header text-white px-4 py-4 flex items-center justify-between shadow shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <button
               className="sm:hidden text-xl leading-none"
