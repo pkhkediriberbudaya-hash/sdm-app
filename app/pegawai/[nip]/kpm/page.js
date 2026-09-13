@@ -9,8 +9,11 @@ import {
   getQueue,
   flushQueue,
   applyChangeToCache,
+  saveFinalClosing,
+  loadFinalClosing,
 } from '@/lib/offlineStorage';
 import { normalizeDesaName } from '@/lib/normalize';
+import { parseFinalClosingWorkbook } from '@/lib/finalClosingParser';
 
 const STATUS_OPTIONS = [
   'Aktif',
@@ -19,6 +22,8 @@ const STATUS_OPTIONS = [
   'Calon PPSE',
   'Sukses Graduasi Mandiri',
   'Sukses PPSE',
+  'Pengurus Meninggal',
+  'Dana Komponen Meninggal',
 ];
 
 const STATUS_CHIPS = [
@@ -70,6 +75,13 @@ export default function DataKpmPage() {
   const [desaFilter, setDesaFilter] = useState('');
   const [kelompokFilter, setKelompokFilter] = useState('');
   const [statusChip, setStatusChip] = useState(null);
+  const [sortField, setSortField] = useState('NAMA');
+  const [sortDir, setSortDir] = useState('asc');
+  const [showSortMenu, setShowSortMenu] = useState(false);
+
+  const [finalClosing, setFinalClosing] = useState(null);
+  const [importingFinalClosing, setImportingFinalClosing] = useState(false);
+  const [finalClosingInfo, setFinalClosingInfo] = useState('');
 
   const [selectedKpm, setSelectedKpm] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -147,6 +159,22 @@ export default function DataKpmPage() {
   }, [selectedKecamatan, loadData]);
 
   useEffect(() => {
+    if (!selectedKecamatan) return;
+    const cached = loadFinalClosing(selectedKecamatan);
+    if (cached) {
+      setFinalClosing(cached.data);
+      setFinalClosingInfo(
+        `Diimpor ${new Date(cached.importedAt).toLocaleString('id-ID')} (${
+          Object.keys(cached.data).length
+        } KPM cocok)`
+      );
+    } else {
+      setFinalClosing(null);
+      setFinalClosingInfo('');
+    }
+  }, [selectedKecamatan]);
+
+  useEffect(() => {
     function handleOnline() {
       handleSync();
     }
@@ -159,6 +187,33 @@ export default function DataKpmPage() {
     setDownloading(true);
     await loadData(selectedKecamatan);
     setDownloading(false);
+  }
+
+  function handleImportFinalClosing(e) {
+    const file = e.target.files?.[0];
+    if (!file || !selectedKecamatan) return;
+    setImportingFinalClosing(true);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const byNokk = parseFinalClosingWorkbook(ev.target.result);
+        setFinalClosing(byNokk);
+        saveFinalClosing(selectedKecamatan, byNokk);
+        setFinalClosingInfo(
+          `Diimpor ${new Date().toLocaleString('id-ID')} (${Object.keys(byNokk).length} KPM cocok)`
+        );
+        setSyncMessage(
+          `Data Final Closing berhasil disandingkan — ${Object.keys(byNokk).length} KPM ketemu.`
+        );
+      } catch {
+        setError('Gagal membaca file Final Closing. Pastikan formatnya sesuai.');
+      } finally {
+        setImportingFinalClosing(false);
+        e.target.value = '';
+      }
+    };
+    reader.onerror = () => setImportingFinalClosing(false);
+    reader.readAsArrayBuffer(file);
   }
 
   async function handleSync() {
@@ -261,8 +316,13 @@ export default function DataKpmPage() {
           (r.DESA || '').toLowerCase().includes(q)
       );
     }
-    return list;
-  }, [records, statusChip, desaFilter, kelompokFilter, search]);
+    const sorted = [...list].sort((a, b) => {
+      const va = (a[sortField] || '').toString();
+      const vb = (b[sortField] || '').toString();
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+    return sorted;
+  }, [records, statusChip, desaFilter, kelompokFilter, search, sortField, sortDir]);
 
   const summary = useMemo(() => {
     const s = { aktif: 0, pengaduan: 0, graduasi: 0, ppse: 0 };
@@ -339,7 +399,65 @@ export default function DataKpmPage() {
           <button className="btn-primary shrink-0" onClick={handleDownload} disabled={downloading}>
             {downloading ? 'Mengunduh...' : '⬇ Unduh untuk Offline'}
           </button>
+          <label className="btn-ghost shrink-0 cursor-pointer">
+            {importingFinalClosing ? 'Memproses...' : '📎 Import Final Closing'}
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleImportFinalClosing}
+              disabled={importingFinalClosing}
+            />
+          </label>
+          <div className="relative shrink-0 ml-auto">
+            <button
+              className="w-9 h-9 rounded-lg border border-brand-100 text-brand-600 hover:bg-brand-50"
+              onClick={() => setShowSortMenu((v) => !v)}
+              title="Urutkan"
+            >
+              ⋮
+            </button>
+            {showSortMenu && (
+              <div className="absolute right-0 mt-1 w-56 card p-3 z-20 space-y-2">
+                <p className="text-xs font-semibold text-brand-400 uppercase">Urutkan berdasarkan</p>
+                <select
+                  className="input"
+                  value={sortField}
+                  onChange={(e) => setSortField(e.target.value)}
+                >
+                  <option value="NAMA">Nama</option>
+                  <option value="NOKK">NOKK</option>
+                  <option value="DESA">Desa</option>
+                  <option value="STATUS_KEPESERTAAN">Status Kepesertaan</option>
+                </select>
+                <div className="flex gap-2">
+                  <button
+                    className={`flex-1 text-sm rounded-lg py-1.5 ${
+                      sortDir === 'asc' ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-700'
+                    }`}
+                    onClick={() => setSortDir('asc')}
+                  >
+                    A → Z
+                  </button>
+                  <button
+                    className={`flex-1 text-sm rounded-lg py-1.5 ${
+                      sortDir === 'desc' ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-700'
+                    }`}
+                    onClick={() => setSortDir('desc')}
+                  >
+                    Z → A
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
+        {finalClosingInfo && (
+          <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2 mb-3">
+            📎 Final Closing: {finalClosingInfo}
+          </p>
+        )}
 
         {syncedAt && (
           <p className="text-xs text-brand-400 mb-3">
@@ -443,11 +561,20 @@ export default function DataKpmPage() {
                 <tbody>
                   {filtered.map((r) => (
                     <tr key={r.NOKK} className="border-b border-brand-50 hover:bg-brand-50 bg-white">
-                      <td className="px-3 py-2 whitespace-nowrap font-medium text-brand-800">
+                      <td className="px-3 py-2 whitespace-nowrap font-medium">
                         <span className="inline-flex items-center">
                           {isKetuaValue(r.IS_KETUA) && <span title="Ketua Kelompok">⭐</span>}
-                          {r.NAMA}
+                          <button
+                            type="button"
+                            className="text-brand-700 hover:underline hover:text-brand-800 text-left"
+                            onClick={() => openDetail(r)}
+                          >
+                            {r.NAMA}
+                          </button>
                           <CopyButton text={r.NAMA} />
+                          {finalClosing?.[r.NOKK] && (
+                            <span title="Ada data Final Closing" className="ml-1">📎</span>
+                          )}
                         </span>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap font-mono text-xs">
@@ -507,6 +634,28 @@ export default function DataKpmPage() {
               <p className="text-sm text-brand-400">
                 NOKK: {selectedKpm.NOKK} · {selectedKpm.ALAMAT}, {selectedKpm.DESA}
               </p>
+
+              {finalClosing?.[selectedKpm.NOKK] && (
+                <div className="bg-green-50 border border-green-100 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-green-800 uppercase mb-1">
+                    📎 Data Final Closing
+                  </p>
+                  {finalClosing[selectedKpm.NOKK].komponen.length > 0 ? (
+                    <ul className="text-sm text-green-700 list-disc list-inside">
+                      {finalClosing[selectedKpm.NOKK].komponen.map((k) => (
+                        <li key={k.nama}>
+                          {k.nama}: {k.jumlah}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-green-700">Tidak ada komponen tercatat.</p>
+                  )}
+                  <p className="text-sm text-green-800 font-semibold mt-1">
+                    Total Bantuan: {finalClosing[selectedKpm.NOKK].nominal || '-'}
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="label">Kelompok</label>

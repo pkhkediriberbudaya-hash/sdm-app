@@ -322,17 +322,6 @@ export default function PegawaiPage() {
 
   return (
     <div className="px-4 py-6 pb-16 max-w-3xl mx-auto space-y-6">
-      {/* Kartu Selamat Datang ala SIKS-NG */}
-      <div className="relative overflow-hidden rounded-2xl bg-brand-gradient p-6 text-white">
-        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10" />
-        <div className="absolute -bottom-16 right-10 w-28 h-28 rounded-full bg-white/5" />
-        <p className="text-brand-100 text-sm relative">Selamat datang,</p>
-        <h1 className="text-2xl font-bold mt-1 relative">{form?.NAMA || nip}</h1>
-        <span className="inline-block mt-3 text-xs bg-white/15 backdrop-blur px-3 py-1 rounded-full relative">
-          NIP {nip}
-        </span>
-      </div>
-
       <form onSubmit={handleSave} className="space-y-6">
         {STATIC_GROUPS.map((group) => (
           <div key={group.title} className="card p-5">
