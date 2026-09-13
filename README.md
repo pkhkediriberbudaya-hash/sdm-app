@@ -59,14 +59,19 @@ dipakai sebagai saran otomatis saat pendamping mengisi field "Kelompok" di Data 
 
 ### Tab `Menus`
 ```
-KEY      | LABEL            | SHEET_NAME      | PRIMARY_KEY | ICON | ORDER
-sdm      | Data SDM         | SDM             | NIP         | 👤   | 1
-desa     | Desa Dampingan   | DesaDampingan   | ID          | 🏘️   | 2
-keluarga | Anggota Keluarga | AnggotaKeluarga | ID          | 👨‍👩‍👧 | 3
-menu     | Kelola Menu      | Menus           | KEY         | ⚙️   | 4
+KEY             | LABEL            | SHEET_NAME      | PRIMARY_KEY | ICON | ORDER
+sdm             | Data SDM         | SDM             | NIP         | 👤   | 1
+desa            | Desa Dampingan   | DesaDampingan   | ID          | 🏘️   | 2
+keluarga        | Anggota Keluarga | AnggotaKeluarga | ID          | 👨‍👩‍👧 | 3
+master_kelompok | Master Kelompok  | MasterKelompok  | NIP         | 👥   | 4
+menu            | Kelola Menu      | Menus           | KEY         | ⚙️   | 5
 ```
 Tab `KPM_[Kecamatan]` akan otomatis terdaftar sendiri di sini setiap admin upload data KPM
 untuk kecamatan baru — tidak perlu ditambahkan manual.
+
+**Catatan untuk tab `KPM_[Kecamatan]` yang sudah ada lebih dulu**: tambahkan 1 kolom baru di
+paling kanan bernama `IS_KETUA` (dipakai fitur penanda Ketua Kelompok). Tab yang baru dibuat
+lewat upload akan otomatis punya kolom ini.
 
 Catat **ID Spreadsheet** dari URL-nya (bagian antara `/d/` dan `/edit`).
 

@@ -10,6 +10,7 @@ import {
   flushQueue,
   applyChangeToCache,
 } from '@/lib/offlineStorage';
+import { normalizeDesaName } from '@/lib/normalize';
 
 const STATUS_OPTIONS = [
   'Aktif',
@@ -71,7 +72,12 @@ export default function DataKpmPage() {
   const [statusChip, setStatusChip] = useState(null);
 
   const [selectedKpm, setSelectedKpm] = useState(null);
-  const [editForm, setEditForm] = useState({ KELOMPOK: '', STATUS_KEPESERTAAN: '', CATATAN: '' });
+  const [editForm, setEditForm] = useState({
+    KELOMPOK: '',
+    STATUS_KEPESERTAAN: '',
+    CATATAN: '',
+    IS_KETUA: false,
+  });
   const [saving, setSaving] = useState(false);
 
   const [queueCount, setQueueCount] = useState(0);
@@ -169,12 +175,17 @@ export default function DataKpmPage() {
     setSyncing(false);
   }
 
+  function isKetuaValue(v) {
+    return v === true || v === 'TRUE' || v === 'true';
+  }
+
   function openDetail(kpm) {
     setSelectedKpm(kpm);
     setEditForm({
       KELOMPOK: kpm.KELOMPOK || '',
       STATUS_KEPESERTAAN: kpm.STATUS_KEPESERTAAN || 'Aktif',
       CATATAN: kpm.CATATAN || '',
+      IS_KETUA: isKetuaValue(kpm.IS_KETUA),
     });
   }
 
@@ -191,10 +202,16 @@ export default function DataKpmPage() {
         body: JSON.stringify(change),
       });
       if (!res.ok) throw new Error('failed');
-      applyChangeToCache(selectedKecamatan, selectedKpm.NOKK, editForm);
-      setRecords((prev) =>
-        prev.map((r) => (r.NOKK === selectedKpm.NOKK ? { ...r, ...editForm } : r))
-      );
+      if (editForm.IS_KETUA) {
+        // Server mungkin melepas status ketua dari KPM lain di kelompok yang sama —
+        // muat ulang biar tabel ikut sinkron, bukan cuma baris yang baru diedit.
+        await loadData(selectedKecamatan);
+      } else {
+        applyChangeToCache(selectedKecamatan, selectedKpm.NOKK, editForm);
+        setRecords((prev) =>
+          prev.map((r) => (r.NOKK === selectedKpm.NOKK ? { ...r, ...editForm } : r))
+        );
+      }
       setSyncMessage('Perubahan tersimpan & langsung tersinkron ke server.');
     } catch {
       queueChange(change);
@@ -222,7 +239,8 @@ export default function DataKpmPage() {
   // Daftar kelompok resmi (dari MasterKelompok) untuk desa yang sedang diedit —
   // dipakai sebagai saran di form edit supaya penamaan kelompok konsisten
   const masterKelompokForDesa = useCallback(
-    (desa) => masterKelompok.filter((k) => k.DESA_DAMPINGAN === desa),
+    (desa) =>
+      masterKelompok.filter((k) => normalizeDesaName(k.DESA_DAMPINGAN) === normalizeDesaName(desa)),
     [masterKelompok]
   );
 
@@ -427,6 +445,7 @@ export default function DataKpmPage() {
                     <tr key={r.NOKK} className="border-b border-brand-50 hover:bg-brand-50 bg-white">
                       <td className="px-3 py-2 whitespace-nowrap font-medium text-brand-800">
                         <span className="inline-flex items-center">
+                          {isKetuaValue(r.IS_KETUA) && <span title="Ketua Kelompok">⭐</span>}
                           {r.NAMA}
                           <CopyButton text={r.NAMA} />
                         </span>
@@ -504,6 +523,24 @@ export default function DataKpmPage() {
                   ))}
                 </datalist>
               </div>
+
+              <label className="flex items-center gap-2 text-sm text-brand-700">
+                <input
+                  type="checkbox"
+                  checked={editForm.IS_KETUA}
+                  onChange={(e) => setEditForm((f) => ({ ...f, IS_KETUA: e.target.checked }))}
+                  disabled={!editForm.KELOMPOK}
+                />
+                ⭐ Tandai sebagai Ketua Kelompok
+              </label>
+              {!editForm.KELOMPOK && (
+                <p className="text-xs text-brand-400 -mt-2">Isi nama Kelompok dulu untuk bisa menandai ketua.</p>
+              )}
+              {editForm.IS_KETUA && (
+                <p className="text-xs text-amber-700 -mt-2">
+                  Kalau sebelumnya ada ketua lain di kelompok ini, statusnya akan otomatis dilepas.
+                </p>
+              )}
 
               <div>
                 <label className="label">Status Kepesertaan</label>

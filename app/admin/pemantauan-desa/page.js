@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { normalizeDesaName } from '@/lib/normalize';
 
 export default function PemantauanDesaPage() {
   const [sdm, setSdm] = useState([]);
@@ -43,8 +44,9 @@ export default function PemantauanDesaPage() {
         kecNode.pendamping.set(nip, { nama: sdmRow?.NAMA || nip, desa: new Map() });
       }
       const pendNode = kecNode.pendamping.get(nip);
-      if (!pendNode.desa.has(d.NAMA_DESA)) {
-        pendNode.desa.set(d.NAMA_DESA, new Set());
+      const desaKey = normalizeDesaName(d.NAMA_DESA);
+      if (!pendNode.desa.has(desaKey)) {
+        pendNode.desa.set(desaKey, { label: d.NAMA_DESA, kelompok: new Set() });
       }
     });
 
@@ -55,8 +57,9 @@ export default function PemantauanDesaPage() {
       if (!kecNode) return;
       const pendNode = kecNode.pendamping.get(nip);
       if (!pendNode) return;
-      const desaSet = pendNode.desa.get(k.DESA_DAMPINGAN);
-      if (desaSet && k.NAMA_KELOMPOK) desaSet.add(k.NAMA_KELOMPOK);
+      const desaKey = normalizeDesaName(k.DESA_DAMPINGAN);
+      const desaNode = pendNode.desa.get(desaKey);
+      if (desaNode && k.NAMA_KELOMPOK) desaNode.kelompok.add(k.NAMA_KELOMPOK);
     });
 
     sdm.forEach((s) => {
@@ -151,19 +154,20 @@ export default function PemantauanDesaPage() {
                           {pendOpen && (
                             <div className="px-3 py-2 space-y-1 bg-white">
                               {Array.from(pend.desa.entries())
-                                .sort(([a], [b]) => a.localeCompare(b))
-                                .map(([desa, kelompokSet]) => {
-                                  const desaKey = `${pendKey}__${desa}`;
-                                  const desaOpen = expandedDesa.has(desaKey);
+                                .sort(([, a], [, b]) => a.label.localeCompare(b.label))
+                                .map(([desaKey, desaNode]) => {
+                                  const desaFullKey = `${pendKey}__${desaKey}`;
+                                  const desaOpen = expandedDesa.has(desaFullKey);
+                                  const kelompokSet = desaNode.kelompok;
                                   return (
-                                    <div key={desa} className="pl-3 border-l-2 border-brand-100">
+                                    <div key={desaKey} className="pl-3 border-l-2 border-brand-100">
                                       <button
-                                        onClick={() => toggle(setExpandedDesa, desaKey)}
+                                        onClick={() => toggle(setExpandedDesa, desaFullKey)}
                                         className="w-full flex items-center justify-between py-1 text-left hover:text-brand-700"
                                       >
                                         <span className="text-sm text-brand-600">
                                           {kelompokSet.size > 0 ? (desaOpen ? '▾' : '▸') : '·'}{' '}
-                                          {desa}
+                                          {desaNode.label}
                                         </span>
                                         {kelompokSet.size > 0 && (
                                           <span className="text-xs text-brand-400">

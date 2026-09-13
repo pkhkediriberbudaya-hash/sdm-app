@@ -22,6 +22,7 @@ const KPM_HEADERS = [
   'KELOMPOK',
   'STATUS_KEPESERTAAN',
   'CATATAN',
+  'IS_KETUA',
 ];
 
 const SHEET_MENUS = process.env.SHEET_MENUS || 'Menus';
@@ -116,6 +117,7 @@ export async function POST(req) {
           KELOMPOK: '',
           STATUS_KEPESERTAAN: 'Aktif',
           CATATAN: '',
+          IS_KETUA: '',
         });
         added++;
       }
