@@ -57,6 +57,16 @@ Import dari file `MasterKelompok.xlsx` yang sudah disiapkan (File → Import →
 lalu rename tab jadi persis `MasterKelompok`). Berisi data ketua kelompok per desa dampingan,
 dipakai sebagai saran otomatis saat pendamping mengisi field "Kelompok" di Data KPM.
 
+### Tab `LogKeluarKPM` (opsional, dibuat otomatis)
+Otomatis terbuat begitu ada pendamping yang pertama kali submit lewat tombol "Submit Graduasi /
+PPSE" di Data KPM. Berisi rekap: siapa submit, KPM mana, kapan, jenis (Graduasi Mandiri/PPSE).
+Dilihat admin lewat menu **"PPSE & Graduasi"**.
+
+### Tab `P2K2Modul`, `JadwalP2K2`, `JurnalHarian` (dibuat otomatis)
+Terbentuk sendiri begitu ada aktivitas pertama (upload modul / tambah jadwal / isi jurnal).
+Tidak perlu dibuat manual, tapi boleh didaftarkan ke `Menus` kalau admin ingin melihat/mengelola
+lewat panel generik.
+
 ### Tab `Menus`
 ```
 KEY             | LABEL            | SHEET_NAME      | PRIMARY_KEY | ICON | ORDER
@@ -109,6 +119,20 @@ npm run dev
 Setiap `git push` ke branch utama akan otomatis memicu re-deploy.
 
 ---
+
+## Setup Penyimpanan File (untuk Modul P2K2)
+
+Fitur download Modul P2K2 butuh **Vercel Blob** (fitur penyimpanan file bawaan Vercel — bukan
+Google Drive, supaya tidak kena masalah kuota service account seperti fitur upload lain):
+
+1. Buka dashboard project di [vercel.com](https://vercel.com) → tab **Storage**
+2. Klik **Create Database** → pilih **Blob**
+3. Beri nama bebas → **Create**
+4. Setelah dibuat, Vercel otomatis menyediakan token — buka tab **.env.local** / **Quickstart**
+   di situ, salin nilai `BLOB_READ_WRITE_TOKEN`
+5. Tambahkan sebagai Environment Variable di **Settings → Environment Variables** project Anda
+   (kalau belum otomatis ditambahkan Vercel)
+6. Redeploy
 
 ## Fitur Data KPM & Offline (PWA)
 

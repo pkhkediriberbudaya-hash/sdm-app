@@ -13,7 +13,11 @@ import {
   loadFinalClosing,
 } from '@/lib/offlineStorage';
 import { normalizeDesaName } from '@/lib/normalize';
-import { parseFinalClosingWorkbook } from '@/lib/finalClosingParser';
+import {
+  parseFinalClosingWorkbook,
+  mergeFinalClosingMaps,
+  KOMPONEN_ICON_MAP,
+} from '@/lib/finalClosingParser';
 
 const STATUS_OPTIONS = [
   'Aktif',
@@ -189,31 +193,44 @@ export default function DataKpmPage() {
     setDownloading(false);
   }
 
-  function handleImportFinalClosing(e) {
-    const file = e.target.files?.[0];
-    if (!file || !selectedKecamatan) return;
+  function readFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  async function handleImportFinalClosing(e) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0 || !selectedKecamatan) return;
     setImportingFinalClosing(true);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const byNokk = parseFinalClosingWorkbook(ev.target.result);
-        setFinalClosing(byNokk);
-        saveFinalClosing(selectedKecamatan, byNokk);
-        setFinalClosingInfo(
-          `Diimpor ${new Date().toLocaleString('id-ID')} (${Object.keys(byNokk).length} KPM cocok)`
-        );
-        setSyncMessage(
-          `Data Final Closing berhasil disandingkan — ${Object.keys(byNokk).length} KPM ketemu.`
-        );
-      } catch {
-        setError('Gagal membaca file Final Closing. Pastikan formatnya sesuai.');
-      } finally {
-        setImportingFinalClosing(false);
-        e.target.value = '';
-      }
-    };
-    reader.onerror = () => setImportingFinalClosing(false);
-    reader.readAsArrayBuffer(file);
+    setError('');
+    try {
+      const maps = await Promise.all(
+        files.map(async (file) => {
+          const buffer = await readFileAsArrayBuffer(file);
+          return parseFinalClosingWorkbook(buffer);
+        })
+      );
+      const combined = mergeFinalClosingMaps(maps);
+      setFinalClosing(combined);
+      saveFinalClosing(selectedKecamatan, combined);
+      setFinalClosingInfo(
+        `Diimpor ${new Date().toLocaleString('id-ID')} dari ${files.length} file (${
+          Object.keys(combined).length
+        } KPM cocok)`
+      );
+      setSyncMessage(
+        `Data Final Closing berhasil disandingkan — ${Object.keys(combined).length} KPM ketemu dari ${files.length} file.`
+      );
+    } catch {
+      setError('Gagal membaca salah satu file Final Closing. Pastikan formatnya sesuai.');
+    } finally {
+      setImportingFinalClosing(false);
+      e.target.value = '';
+    }
   }
 
   async function handleSync() {
@@ -340,6 +357,17 @@ export default function DataKpmPage() {
     setStatusChip((prev) => (prev === key ? null : key));
   }
 
+  const komponenAggregate = useMemo(() => {
+    if (!finalClosing) return {};
+    const agg = {};
+    Object.values(finalClosing).forEach((entry) => {
+      entry.komponen.forEach((k) => {
+        agg[k.nama] = (agg[k.nama] || 0) + k.jumlah;
+      });
+    });
+    return agg;
+  }, [finalClosing]);
+
   if (loadingDesa) {
     return (
       <div className="min-h-full flex items-center justify-center py-20">
@@ -380,6 +408,30 @@ export default function DataKpmPage() {
         <p className="text-sm text-brand-600 bg-brand-100 rounded-lg px-3 py-2">{syncMessage}</p>
       )}
 
+      {Object.keys(komponenAggregate).length > 0 && (
+        <div className="card p-3 flex flex-wrap items-center gap-3">
+          <span className="text-xs font-semibold text-brand-400 uppercase">Komponen (Final Closing)</span>
+          {Object.entries(komponenAggregate).map(([nama, jumlah]) => (
+            <span
+              key={nama}
+              title={nama}
+              className="inline-flex items-center gap-1 bg-brand-50 text-brand-700 text-sm px-2 py-1 rounded-full"
+            >
+              <span>{KOMPONEN_ICON_MAP[nama] || '📌'}</span>
+              <span className="font-semibold">{jumlah}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <a
+        href={`/pegawai/${encodeURIComponent(nip)}/graduasi`}
+        className="card p-4 flex items-center justify-between hover:bg-brand-50 transition"
+      >
+        <span className="text-brand-800 font-medium">📤 Submit Graduasi Mandiri / PPSE</span>
+        <span className="text-brand-400">→</span>
+      </a>
+
       <div className="card p-5">
         <div className="flex flex-wrap items-end gap-3 mb-4">
           <div className="flex-1 min-w-[160px]">
@@ -404,6 +456,7 @@ export default function DataKpmPage() {
             <input
               type="file"
               accept=".xlsx,.xls"
+              multiple
               className="hidden"
               onChange={handleImportFinalClosing}
               disabled={importingFinalClosing}

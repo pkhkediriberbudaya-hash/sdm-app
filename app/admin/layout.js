@@ -29,6 +29,8 @@ export default function AdminLayout({ children }) {
 
   const staticLinks = [
     { href: '/admin/pemantauan-desa', icon: '🗂️', label: 'Pemantauan Desa' },
+    { href: '/admin/keluar-kpm', icon: '📤', label: 'PPSE & Graduasi' },
+    { href: '/admin/p2k2-modul', icon: '📚', label: 'Modul P2K2' },
     { href: '/admin/kpm-upload', icon: '📥', label: 'Upload Data KPM' },
     { href: '/admin/reset-password', icon: '🔑', label: 'Reset Password' },
   ];
