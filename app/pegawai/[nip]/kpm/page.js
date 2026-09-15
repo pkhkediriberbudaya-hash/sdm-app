@@ -103,6 +103,9 @@ export default function DataKpmPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
 
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
+
   const kecamatanOptions = useMemo(
     () => Array.from(new Set(desaRecords.map((d) => d.KECAMATAN))).sort(),
     [desaRecords]
@@ -345,6 +348,19 @@ export default function DataKpmPage() {
     });
     return sorted;
   }, [records, statusChip, desaFilter, kelompokFilter, search, sortField, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage]
+  );
+
+  // Reset ke halaman 1 setiap kali filter/pencarian/urutan berubah, supaya
+  // pengguna tidak "nyangkut" di halaman kosong setelah hasil filter mengecil.
+  useEffect(() => {
+    setPage(1);
+  }, [statusChip, desaFilter, kelompokFilter, search, sortField, sortDir]);
 
   const summary = useMemo(() => {
     const s = { aktif: 0, pengaduan: 0, graduasi: 0, ppse: 0 };
@@ -611,7 +627,7 @@ export default function DataKpmPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((r) => (
+                  {paginated.map((r) => (
                     <tr key={r.NOKK} className="border-b border-brand-50 hover:bg-brand-50 bg-white">
                       <td className="px-3 py-2 whitespace-nowrap font-medium">
                         <span className="inline-flex items-center">
@@ -665,6 +681,29 @@ export default function DataKpmPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+        {!loadingKpm && filtered.length > 0 && (
+          <div className="flex items-center justify-between mt-3 text-sm text-brand-600">
+            <span>
+              Halaman {currentPage} dari {totalPages} · {filtered.length} KPM
+            </span>
+            <div className="flex gap-2">
+              <button
+                className="btn-ghost"
+                disabled={currentPage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                &larr; Sebelumnya
+              </button>
+              <button
+                className="btn-ghost"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Selanjutnya &rarr;
+              </button>
             </div>
           </div>
         )}

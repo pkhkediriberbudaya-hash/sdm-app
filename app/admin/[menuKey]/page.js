@@ -13,6 +13,8 @@ export default function AdminMenuPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
@@ -64,6 +66,19 @@ export default function AdminMenuPage() {
       headers.some((h) => (r[h] || '').toString().toLowerCase().includes(q))
     );
   }, [records, headers, search]);
+
+  // Reset ke halaman 1 setiap kali pencarian atau sumber data berubah, supaya
+  // tidak "nyangkut" di halaman kosong setelah filter memperkecil hasil.
+  useEffect(() => {
+    setPage(1);
+  }, [search, records]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage]
+  );
 
   const previewHeaders = headers.slice(0, 5);
 
@@ -193,7 +208,7 @@ export default function AdminMenuPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((row) => (
+              {paginated.map((row) => (
                 <tr key={row._row} className="border-b border-brand-50 hover:bg-brand-50">
                   {previewHeaders.map((h) => (
                     <td key={h} className="px-4 py-3 whitespace-nowrap max-w-[220px] truncate">
@@ -214,6 +229,30 @@ export default function AdminMenuPage() {
           </table>
         )}
       </div>
+
+      {!loading && filtered.length > 0 && (
+        <div className="flex items-center justify-between mt-4 text-sm text-brand-600">
+          <span>
+            Halaman {currentPage} dari {totalPages} · {filtered.length} baris
+          </span>
+          <div className="flex gap-2">
+            <button
+              className="btn-ghost"
+              disabled={currentPage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              &larr; Sebelumnya
+            </button>
+            <button
+              className="btn-ghost"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Selanjutnya &rarr;
+            </button>
+          </div>
+        </div>
+      )}
 
       {modalOpen && (
         <div className="fixed inset-0 bg-brand-900/50 flex items-center justify-center p-4 z-50">
