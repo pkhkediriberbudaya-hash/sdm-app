@@ -53,7 +53,8 @@ export async function PUT(req) {
     const session = await getPegawaiSession(req);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { kecamatan, nokk, KELOMPOK, STATUS_KEPESERTAAN, CATATAN, IS_KETUA } = await req.json();
+    const { kecamatan, nokk, KELOMPOK, STATUS_KEPESERTAAN, CATATAN, IS_KETUA, ALAMAT, JENIS_USAHA } =
+      await req.json();
     if (!kecamatan || !nokk) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
@@ -98,6 +99,8 @@ export async function PUT(req) {
       STATUS_KEPESERTAAN: STATUS_KEPESERTAAN ?? record.STATUS_KEPESERTAAN,
       CATATAN: CATATAN ?? record.CATATAN,
       IS_KETUA: wantsKetua ? 'TRUE' : 'FALSE',
+      ALAMAT: ALAMAT ?? record.ALAMAT,
+      JENIS_USAHA: JENIS_USAHA ?? record.JENIS_USAHA ?? '',
     };
     await updateRow(sheetName, record._row, headers, updated);
     return NextResponse.json({ success: true });

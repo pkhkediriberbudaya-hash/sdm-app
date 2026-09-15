@@ -93,6 +93,8 @@ export default function DataKpmPage() {
     STATUS_KEPESERTAAN: '',
     CATATAN: '',
     IS_KETUA: false,
+    ALAMAT: '',
+    JENIS_USAHA: '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -258,6 +260,8 @@ export default function DataKpmPage() {
       STATUS_KEPESERTAAN: kpm.STATUS_KEPESERTAAN || 'Aktif',
       CATATAN: kpm.CATATAN || '',
       IS_KETUA: isKetuaValue(kpm.IS_KETUA),
+      ALAMAT: kpm.ALAMAT || '',
+      JENIS_USAHA: kpm.JENIS_USAHA || '',
     });
   }
 
@@ -424,30 +428,24 @@ export default function DataKpmPage() {
         </div>
       )}
 
-      <a
-        href={`/pegawai/${encodeURIComponent(nip)}/graduasi`}
-        className="card p-4 flex items-center justify-between hover:bg-brand-50 transition"
-      >
-        <span className="text-brand-800 font-medium">📤 Submit Graduasi Mandiri / PPSE</span>
-        <span className="text-brand-400">→</span>
-      </a>
-
       <div className="card p-5">
         <div className="flex flex-wrap items-end gap-3 mb-4">
-          <div className="flex-1 min-w-[160px]">
-            <label className="label">Kecamatan</label>
-            <select
-              className="input"
-              value={selectedKecamatan}
-              onChange={(e) => setSelectedKecamatan(e.target.value)}
-            >
-              {kecamatanOptions.map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </select>
-          </div>
+          {kecamatanOptions.length > 1 && (
+            <div className="flex-1 min-w-[160px]">
+              <label className="label">Kecamatan</label>
+              <select
+                className="input"
+                value={selectedKecamatan}
+                onChange={(e) => setSelectedKecamatan(e.target.value)}
+              >
+                {kecamatanOptions.map((k) => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <button className="btn-primary shrink-0" onClick={handleDownload} disabled={downloading}>
             {downloading ? 'Mengunduh...' : '⬇ Unduh untuk Offline'}
           </button>
@@ -673,9 +671,9 @@ export default function DataKpmPage() {
 
       {selectedKpm && (
         <div className="fixed inset-0 bg-brand-900/50 flex items-end sm:items-center justify-center p-4 z-50">
-          <div className="card w-full max-w-md">
-            <div className="px-6 py-4 border-b border-brand-100 flex items-center justify-between">
-              <h2 className="font-bold text-brand-800">{selectedKpm.NAMA}</h2>
+          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-brand-100 flex items-center justify-between sticky top-0 bg-white z-10">
+              <h2 className="font-bold text-brand-800">Detail KPM</h2>
               <button
                 className="text-brand-400 text-xl leading-none"
                 onClick={() => setSelectedKpm(null)}
@@ -684,47 +682,91 @@ export default function DataKpmPage() {
               </button>
             </div>
             <form onSubmit={handleSaveDetail} className="p-6 space-y-4">
-              <p className="text-sm text-brand-400">
-                NOKK: {selectedKpm.NOKK} · {selectedKpm.ALAMAT}, {selectedKpm.DESA}
-              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Nama</label>
+                  <input className="input bg-brand-50" value={selectedKpm.NAMA} readOnly disabled />
+                </div>
+                <div>
+                  <label className="label">Kelompok</label>
+                  <input
+                    className="input"
+                    list="kelompok-suggestions"
+                    value={editForm.KELOMPOK}
+                    onChange={(e) => setEditForm((f) => ({ ...f, KELOMPOK: e.target.value }))}
+                    placeholder="Ketik/pilih"
+                  />
+                  <datalist id="kelompok-suggestions">
+                    {masterKelompokForDesa(selectedKpm.DESA).map((k) => (
+                      <option key={k.NAMA_KELOMPOK} value={k.NAMA_KELOMPOK} />
+                    ))}
+                  </datalist>
+                </div>
+                <div>
+                  <label className="label">Desa</label>
+                  <input className="input bg-brand-50" value={selectedKpm.DESA} readOnly disabled />
+                </div>
+                <div>
+                  <label className="label">No KK</label>
+                  <span className="inline-flex items-center w-full">
+                    <input
+                      className="input bg-brand-50 font-mono text-xs"
+                      value={selectedKpm.NOKK}
+                      readOnly
+                      disabled
+                    />
+                    <CopyButton text={selectedKpm.NOKK} />
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Alamat</label>
+                <input
+                  className="input"
+                  value={editForm.ALAMAT}
+                  onChange={(e) => setEditForm((f) => ({ ...f, ALAMAT: e.target.value }))}
+                  placeholder="Alamat KPM"
+                />
+              </div>
+
+              <div>
+                <label className="label">NIK Pengurus</label>
+                <span className="inline-flex items-center w-full">
+                  <input
+                    className="input bg-brand-50 font-mono text-xs"
+                    value={selectedKpm.NIK}
+                    readOnly
+                    disabled
+                  />
+                  <CopyButton text={selectedKpm.NIK} />
+                </span>
+              </div>
 
               {finalClosing?.[selectedKpm.NOKK] && (
-                <div className="bg-green-50 border border-green-100 rounded-lg p-3">
-                  <p className="text-xs font-semibold text-green-800 uppercase mb-1">
-                    📎 Data Final Closing
-                  </p>
+                <div>
+                  <p className="label mb-2">Komponen Dimiliki (Final Closing)</p>
                   {finalClosing[selectedKpm.NOKK].komponen.length > 0 ? (
-                    <ul className="text-sm text-green-700 list-disc list-inside">
+                    <div className="grid grid-cols-4 gap-2">
                       {finalClosing[selectedKpm.NOKK].komponen.map((k) => (
-                        <li key={k.nama}>
-                          {k.nama}: {k.jumlah}
-                        </li>
+                        <div
+                          key={k.nama}
+                          className="bg-brand-50 rounded-lg p-2 text-center"
+                          title={k.nama}
+                        >
+                          <p className="text-lg">{KOMPONEN_ICON_MAP[k.nama] || '📌'}</p>
+                          <p className="text-sm font-bold text-brand-800">{k.jumlah}</p>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   ) : (
-                    <p className="text-sm text-green-700">Tidak ada komponen tercatat.</p>
+                    <p className="text-sm text-brand-400">Tidak ada komponen tercatat.</p>
                   )}
-                  <p className="text-sm text-green-800 font-semibold mt-1">
+                  <p className="text-sm text-green-800 font-semibold mt-2">
                     Total Bantuan: {finalClosing[selectedKpm.NOKK].nominal || '-'}
                   </p>
                 </div>
               )}
-
-              <div>
-                <label className="label">Kelompok</label>
-                <input
-                  className="input"
-                  list="kelompok-suggestions"
-                  value={editForm.KELOMPOK}
-                  onChange={(e) => setEditForm((f) => ({ ...f, KELOMPOK: e.target.value }))}
-                  placeholder="Ketik atau pilih dari saran"
-                />
-                <datalist id="kelompok-suggestions">
-                  {masterKelompokForDesa(selectedKpm.DESA).map((k) => (
-                    <option key={k.NAMA_KELOMPOK} value={k.NAMA_KELOMPOK} />
-                  ))}
-                </datalist>
-              </div>
 
               <label className="flex items-center gap-2 text-sm text-brand-700">
                 <input
@@ -735,9 +777,6 @@ export default function DataKpmPage() {
                 />
                 ⭐ Tandai sebagai Ketua Kelompok
               </label>
-              {!editForm.KELOMPOK && (
-                <p className="text-xs text-brand-400 -mt-2">Isi nama Kelompok dulu untuk bisa menandai ketua.</p>
-              )}
               {editForm.IS_KETUA && (
                 <p className="text-xs text-amber-700 -mt-2">
                   Kalau sebelumnya ada ketua lain di kelompok ini, statusnya akan otomatis dilepas.
@@ -745,7 +784,7 @@ export default function DataKpmPage() {
               )}
 
               <div>
-                <label className="label">Status Kepesertaan</label>
+                <label className="label">Status KPM</label>
                 <select
                   className="input"
                   value={editForm.STATUS_KEPESERTAAN}
@@ -760,6 +799,18 @@ export default function DataKpmPage() {
                   ))}
                 </select>
               </div>
+
+              {editForm.STATUS_KEPESERTAAN === 'Calon PPSE' && (
+                <div>
+                  <label className="label">Jenis Usaha</label>
+                  <input
+                    className="input"
+                    value={editForm.JENIS_USAHA}
+                    onChange={(e) => setEditForm((f) => ({ ...f, JENIS_USAHA: e.target.value }))}
+                    placeholder="Misal: Warung kelontong, Ternak ayam, dsb."
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="label">Catatan</label>

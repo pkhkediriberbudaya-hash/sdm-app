@@ -23,6 +23,7 @@ const KPM_HEADERS = [
   'STATUS_KEPESERTAAN',
   'CATATAN',
   'IS_KETUA',
+  'JENIS_USAHA',
 ];
 
 const SHEET_MENUS = process.env.SHEET_MENUS || 'Menus';
@@ -118,6 +119,7 @@ export async function POST(req) {
           STATUS_KEPESERTAAN: 'Aktif',
           CATATAN: '',
           IS_KETUA: '',
+          JENIS_USAHA: '',
         });
         added++;
       }
