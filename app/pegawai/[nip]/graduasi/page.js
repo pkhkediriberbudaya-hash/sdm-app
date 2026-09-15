@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+
+const ASSESSMENT_STATUS = 'Calon PPSE (Assessment SIKSMO)';
 
 export default function GraduasiPage() {
   const [desaRecords, setDesaRecords] = useState([]);
@@ -10,14 +12,17 @@ export default function GraduasiPage() {
   const [kpmRecords, setKpmRecords] = useState([]);
   const [loadingKpm, setLoadingKpm] = useState(false);
 
-  const [keluarNama, setKeluarNama] = useState('');
-  const [keluarJenis, setKeluarJenis] = useState('Graduasi Mandiri');
-  const [keluarKeterangan, setKeluarKeterangan] = useState('');
+  const [search, setSearch] = useState('');
+  const [selectedKpm, setSelectedKpm] = useState(null);
+
+  const [jenis, setJenis] = useState('Graduasi Mandiri');
+  const [keterangan, setKeterangan] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
 
   const [riwayat, setRiwayat] = useState([]);
   const [loadingRiwayat, setLoadingRiwayat] = useState(true);
+  const [tarikLoadingId, setTarikLoadingId] = useState(null);
 
   useEffect(() => {
     fetch('/api/desa')
@@ -29,7 +34,6 @@ export default function GraduasiPage() {
         setKecamatanOptions(kecs);
         if (kecs.length > 0) setSelectedKecamatan(kecs[0]);
       });
-
     loadRiwayat();
   }, []);
 
@@ -59,16 +63,28 @@ export default function GraduasiPage() {
     if (selectedKecamatan) loadKpm(selectedKecamatan);
   }, [selectedKecamatan, loadKpm]);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!keluarNama.trim()) return;
-    const match = kpmRecords.find(
-      (r) => r.NAMA.toLowerCase() === keluarNama.trim().toLowerCase()
-    );
-    if (!match) {
-      setMessage({ type: 'error', text: 'Nama tidak ditemukan di data KPM kecamatan ini. Buka Data KPM dan unduh dulu kalau belum.' });
-      return;
-    }
+  const filteredKpm = useMemo(() => {
+    if (!search.trim()) return [];
+    const q = search.toLowerCase();
+    return kpmRecords
+      .filter(
+        (r) =>
+          (r.NAMA || '').toLowerCase().includes(q) ||
+          (r.NOKK || '').toLowerCase().includes(q) ||
+          (r.DESA || '').toLowerCase().includes(q)
+      )
+      .slice(0, 15);
+  }, [kpmRecords, search]);
+
+  function selectKpm(r) {
+    setSelectedKpm(r);
+    setSearch('');
+    setMessage(null);
+    setJenis('Graduasi Mandiri');
+  }
+
+  async function handleSubmit(tahap) {
+    if (!selectedKpm) return;
     setSubmitting(true);
     setMessage(null);
     try {
@@ -77,18 +93,19 @@ export default function GraduasiPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           kecamatan: selectedKecamatan,
-          nokk: match.NOKK,
-          jenis: keluarJenis,
-          keterangan: keluarKeterangan,
+          nokk: selectedKpm.NOKK,
+          jenis,
+          tahap,
+          keterangan,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
         setMessage({ type: 'error', text: data.error || 'Gagal submit.' });
       } else {
-        setMessage({ type: 'success', text: `${match.NAMA} berhasil disubmit sebagai ${keluarJenis}.` });
-        setKeluarNama('');
-        setKeluarKeterangan('');
+        setMessage({ type: 'success', text: `${selectedKpm.NAMA} berhasil diperbarui.` });
+        setSelectedKpm({ ...selectedKpm, STATUS_KEPESERTAAN: data.status });
+        setKeterangan('');
         loadKpm(selectedKecamatan);
         loadRiwayat();
       }
@@ -99,56 +116,176 @@ export default function GraduasiPage() {
     }
   }
 
+  async function handleTarikKembali(row) {
+    if (!confirm(`Tarik kembali submission untuk ${row.NAMA_KPM}? Status akan dikembalikan ke Aktif.`)) return;
+    setTarikLoadingId(row.ID);
+    try {
+      await fetch('/api/kpm/tarik-kembali', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kecamatan: row.KECAMATAN, nokk: row.NOKK }),
+      });
+      loadRiwayat();
+      if (selectedKecamatan === row.KECAMATAN) loadKpm(selectedKecamatan);
+    } finally {
+      setTarikLoadingId(null);
+    }
+  }
+
+  const isAssessed = selectedKpm?.STATUS_KEPESERTAAN === ASSESSMENT_STATUS;
+
   return (
     <div className="px-4 py-6 pb-16 max-w-3xl mx-auto space-y-6">
       <div className="card p-5">
         <h2 className="text-brand-800 font-bold mb-1">📤 Submit Graduasi Mandiri / PPSE</h2>
         <p className="text-sm text-brand-400 mb-4">
-          Langsung terkirim ke server dan tercatat di rekap admin. Butuh koneksi internet.
+          Cari lalu pilih KPM dari tabel (bukan cuma nama) supaya tidak salah orang — banyak nama
+          yang sama.
         </p>
 
-        <div className="mb-3">
-          <label className="label">Kecamatan</label>
-          <select
-            className="input"
-            value={selectedKecamatan}
-            onChange={(e) => setSelectedKecamatan(e.target.value)}
-          >
-            {kecamatanOptions.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
-        </div>
+        {kecamatanOptions.length > 1 && (
+          <div className="mb-3">
+            <label className="label">Kecamatan</label>
+            <select
+              className="input"
+              value={selectedKecamatan}
+              onChange={(e) => {
+                setSelectedKecamatan(e.target.value);
+                setSelectedKpm(null);
+              }}
+            >
+              {kecamatanOptions.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <input
-            className="input sm:col-span-2"
-            list="graduasi-nama-suggestions"
-            placeholder={loadingKpm ? 'Memuat data KPM...' : 'Ketik nama KPM...'}
-            value={keluarNama}
-            onChange={(e) => setKeluarNama(e.target.value)}
-          />
-          <datalist id="graduasi-nama-suggestions">
-            {kpmRecords.map((r) => (
-              <option key={r.NOKK} value={r.NAMA} />
-            ))}
-          </datalist>
-          <select className="input" value={keluarJenis} onChange={(e) => setKeluarJenis(e.target.value)}>
-            <option value="Graduasi Mandiri">Graduasi Mandiri</option>
-            <option value="PPSE">PPSE</option>
-          </select>
-          <button className="btn-accent" disabled={submitting || !keluarNama.trim()}>
-            {submitting ? 'Mengirim...' : 'Submit'}
-          </button>
-          <input
-            className="input sm:col-span-4"
-            placeholder="Keterangan (opsional)"
-            value={keluarKeterangan}
-            onChange={(e) => setKeluarKeterangan(e.target.value)}
-          />
-        </form>
+        {!selectedKpm ? (
+          <>
+            <input
+              className="input mb-3"
+              placeholder={loadingKpm ? 'Memuat data KPM...' : 'Cari nama / NOKK / desa...'}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              disabled={loadingKpm}
+            />
+            {search.trim() && (
+              <div className="border border-brand-100 rounded-lg overflow-hidden">
+                {filteredKpm.length === 0 ? (
+                  <p className="p-3 text-sm text-brand-400">Tidak ditemukan.</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-brand-50 text-left">
+                        <th className="px-3 py-2 font-semibold text-brand-700">Nama</th>
+                        <th className="px-3 py-2 font-semibold text-brand-700">NOKK</th>
+                        <th className="px-3 py-2 font-semibold text-brand-700">Desa</th>
+                        <th className="px-3 py-2 font-semibold text-brand-700">Kelompok</th>
+                        <th className="px-3 py-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredKpm.map((r) => (
+                        <tr key={r.NOKK} className="border-t border-brand-50 hover:bg-brand-50">
+                          <td className="px-3 py-2 font-medium text-brand-800">{r.NAMA}</td>
+                          <td className="px-3 py-2 font-mono text-xs">{r.NOKK}</td>
+                          <td className="px-3 py-2">{r.DESA}</td>
+                          <td className="px-3 py-2">{r.KELOMPOK || '-'}</td>
+                          <td className="px-3 py-2 text-right">
+                            <button
+                              className="btn-ghost text-xs px-2 py-1"
+                              onClick={() => selectKpm(r)}
+                            >
+                              Pilih
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="space-y-4">
+            <div className="bg-brand-50 rounded-lg p-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold text-brand-800">{selectedKpm.NAMA}</p>
+                <p className="text-xs text-brand-500">
+                  NOKK: {selectedKpm.NOKK} · {selectedKpm.DESA}
+                  {selectedKpm.KELOMPOK ? ` · ${selectedKpm.KELOMPOK}` : ''}
+                </p>
+                <p className="text-xs text-brand-500 mt-1">
+                  Status saat ini: <b>{selectedKpm.STATUS_KEPESERTAAN || 'Aktif'}</b>
+                </p>
+              </div>
+              <button className="btn-ghost text-xs shrink-0" onClick={() => setSelectedKpm(null)}>
+                Ganti Pilihan
+              </button>
+            </div>
+
+            <div>
+              <label className="label">Jenis</label>
+              <select className="input" value={jenis} onChange={(e) => setJenis(e.target.value)}>
+                <option value="Graduasi Mandiri">Graduasi Mandiri</option>
+                <option value="PPSE">PPSE</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Keterangan (opsional)</label>
+              <textarea
+                className="input"
+                rows={2}
+                value={keterangan}
+                onChange={(e) => setKeterangan(e.target.value)}
+              />
+            </div>
+
+            {jenis === 'Graduasi Mandiri' ? (
+              <button
+                className="btn-accent w-full"
+                onClick={() => handleSubmit('Final')}
+                disabled={submitting}
+              >
+                {submitting ? 'Mengirim...' : 'Submit Graduasi Mandiri'}
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-brand-400">
+                  PPSE punya 2 langkah — langkah 2 baru aktif setelah langkah 1 selesai.
+                </p>
+                <button
+                  className={`w-full rounded-lg py-2.5 font-semibold text-sm ${
+                    isAssessed
+                      ? 'bg-green-100 text-green-700 cursor-default'
+                      : 'btn-accent'
+                  }`}
+                  onClick={() => !isAssessed && handleSubmit('Assessment SIKSMO')}
+                  disabled={submitting || isAssessed}
+                >
+                  {isAssessed ? '✓ 1. Sudah Assessment SIKSMO' : '1. Sudah Assessment SIKSMO'}
+                </button>
+                <button
+                  className="btn-primary w-full"
+                  onClick={() => handleSubmit('Realisasi Penyaluran')}
+                  disabled={submitting || !isAssessed}
+                >
+                  {submitting ? 'Mengirim...' : '2. Realisasi Penyaluran (Resmi Graduasi)'}
+                </button>
+                {!isAssessed && (
+                  <p className="text-xs text-amber-700">
+                    Selesaikan langkah 1 dulu sebelum bisa submit Realisasi Penyaluran.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {message && (
           <p
@@ -175,20 +312,34 @@ export default function GraduasiPage() {
               .sort((a, b) => new Date(b.TANGGAL) - new Date(a.TANGGAL))
               .map((r) => (
                 <li key={r.ID} className="py-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <p className="font-medium text-brand-800">{r.NAMA_KPM}</p>
                     <span
-                      className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        r.JENIS === 'PPSE' ? 'bg-brand-100 text-brand-600' : 'bg-green-100 text-green-700'
+                      className={`text-xs font-medium px-2 py-1 rounded-full shrink-0 ${
+                        r.JENIS === 'Dibatalkan'
+                          ? 'bg-red-100 text-red-700'
+                          : r.JENIS === 'PPSE'
+                          ? 'bg-brand-100 text-brand-600'
+                          : 'bg-green-100 text-green-700'
                       }`}
                     >
                       {r.JENIS}
                     </span>
                   </div>
                   <p className="text-xs text-brand-400">
-                    {r.DESA}, {r.KECAMATAN} · {new Date(r.TANGGAL).toLocaleString('id-ID')}
+                    {r.DESA}, {r.KECAMATAN} · {r.TAHAP} ·{' '}
+                    {new Date(r.TANGGAL).toLocaleString('id-ID')}
                   </p>
                   {r.KETERANGAN && <p className="text-xs text-brand-500 mt-1">{r.KETERANGAN}</p>}
+                  {r.JENIS !== 'Dibatalkan' && (
+                    <button
+                      className="text-xs text-red-600 underline mt-1"
+                      onClick={() => handleTarikKembali(r)}
+                      disabled={tarikLoadingId === r.ID}
+                    >
+                      {tarikLoadingId === r.ID ? 'Memproses...' : '↩ Tarik Kembali'}
+                    </button>
+                  )}
                 </li>
               ))}
           </ul>

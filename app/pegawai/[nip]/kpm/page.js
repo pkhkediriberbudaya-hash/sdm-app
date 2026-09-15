@@ -24,6 +24,7 @@ const STATUS_OPTIONS = [
   'Pengaduan',
   'Calon Graduasi Mandiri',
   'Calon PPSE',
+  'Calon PPSE (Assessment SIKSMO)',
   'Sukses Graduasi Mandiri',
   'Sukses PPSE',
   'Pengurus Meninggal',

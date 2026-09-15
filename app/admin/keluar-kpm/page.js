@@ -39,6 +39,7 @@ export default function KeluarKpmPage() {
 
   const countGraduasi = records.filter((r) => r.JENIS === 'Graduasi Mandiri').length;
   const countPpse = records.filter((r) => r.JENIS === 'PPSE').length;
+  const countDibatalkan = records.filter((r) => r.JENIS === 'Dibatalkan').length;
 
   return (
     <div className="p-6 sm:p-8">
@@ -64,6 +65,14 @@ export default function KeluarKpmPage() {
           }`}
         >
           PPSE ({countPpse})
+        </button>
+        <button
+          onClick={() => setTab('Dibatalkan')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium ${
+            tab === 'Dibatalkan' ? 'bg-red-600 text-white' : 'bg-white border border-brand-100 text-brand-700'
+          }`}
+        >
+          Dibatalkan ({countDibatalkan})
         </button>
       </div>
 
@@ -92,6 +101,7 @@ export default function KeluarKpmPage() {
                 <th className="px-4 py-3 font-semibold text-brand-800 whitespace-nowrap">Tanggal</th>
                 <th className="px-4 py-3 font-semibold text-brand-800 whitespace-nowrap">Nama KPM</th>
                 <th className="px-4 py-3 font-semibold text-brand-800 whitespace-nowrap">NOKK</th>
+                <th className="px-4 py-3 font-semibold text-brand-800 whitespace-nowrap">Tahap</th>
                 <th className="px-4 py-3 font-semibold text-brand-800 whitespace-nowrap">Kecamatan</th>
                 <th className="px-4 py-3 font-semibold text-brand-800 whitespace-nowrap">Desa</th>
                 <th className="px-4 py-3 font-semibold text-brand-800 whitespace-nowrap">Pendamping</th>
@@ -106,6 +116,7 @@ export default function KeluarKpmPage() {
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap font-medium text-brand-800">{r.NAMA_KPM}</td>
                   <td className="px-4 py-3 whitespace-nowrap font-mono text-xs">{r.NOKK}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{r.TAHAP || '-'}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{r.KECAMATAN}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{r.DESA}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{r.NAMA_PENDAMPING}</td>
