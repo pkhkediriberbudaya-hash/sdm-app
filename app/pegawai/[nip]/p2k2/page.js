@@ -2,6 +2,16 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
+import { normalizeDesaName } from '@/lib/normalize';
+import {
+  loadJadwalList,
+  addJadwalLocal,
+  deleteJadwalLocal,
+  saveDesaCache,
+  loadDesaCache,
+  loadKpmCache,
+  saveKpmCache,
+} from '@/lib/offlineStorage';
 
 function currentMonthLabel() {
   return new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
@@ -25,7 +35,6 @@ export default function P2K2Page() {
   const [kecamatanOptions, setKecamatanOptions] = useState([]);
 
   const [jadwalList, setJadwalList] = useState([]);
-  const [loadingJadwal, setLoadingJadwal] = useState(true);
   const [jadwalForm, setJadwalForm] = useState({
     KECAMATAN: '',
     DESA: '',
@@ -48,36 +57,52 @@ export default function P2K2Page() {
   const [absensiKpm, setAbsensiKpm] = useState([]);
   const [loadingAbsensi, setLoadingAbsensi] = useState(false);
   const [absensiError, setAbsensiError] = useState('');
+  const [absensiFromCache, setAbsensiFromCache] = useState(false);
 
+  // Modul P2K2 tetap dari server — ini konten bersama yang diunggah admin,
+  // jadi memang perlu terhubung untuk melihat daftar/link unduhan terbaru.
   useEffect(() => {
     fetch('/api/p2k2-modul')
       .then((r) => r.json())
       .then((d) => setModules(d.records || []))
       .finally(() => setLoadingModules(false));
+  }, []);
 
+  // Desa Dampingan: coba ambil dari server (data terbaru), tapi kalau gagal
+  // (offline) pakai cache lokal terakhir supaya dropdown tetap terisi.
+  useEffect(() => {
+    const cached = loadDesaCache(nip);
+    if (cached.length > 0) {
+      applyDesaRecords(cached);
+    }
     fetch(`/api/desa?nip=${encodeURIComponent(nip)}`)
       .then((r) => r.json())
       .then((d) => {
         const list = d.records || [];
-        setDesaRecords(list);
-        const kecs = Array.from(new Set(list.map((x) => x.KECAMATAN))).sort();
-        setKecamatanOptions(kecs);
-        if (kecs.length > 0) {
-          setJadwalForm((f) => ({ ...f, KECAMATAN: kecs[0] }));
-          setAbsensiForm((f) => ({ ...f, KECAMATAN: kecs[0] }));
+        if (list.length > 0) {
+          applyDesaRecords(list);
+          saveDesaCache(nip, list);
         }
+      })
+      .catch(() => {
+        /* offline: tetap pakai cache yang sudah dimuat di atas */
       });
-
-    loadJadwal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nip]);
 
-  const loadJadwal = useCallback(() => {
-    setLoadingJadwal(true);
-    fetch('/api/jadwal-p2k2')
-      .then((r) => r.json())
-      .then((d) => setJadwalList(d.records || []))
-      .finally(() => setLoadingJadwal(false));
-  }, []);
+  function applyDesaRecords(list) {
+    setDesaRecords(list);
+    const kecs = Array.from(new Set(list.map((x) => x.KECAMATAN))).sort();
+    setKecamatanOptions(kecs);
+    setJadwalForm((f) => (f.KECAMATAN ? f : { ...f, KECAMATAN: kecs[0] || '' }));
+    setAbsensiForm((f) => (f.KECAMATAN ? f : { ...f, KECAMATAN: kecs[0] || '' }));
+  }
+
+  // Jadwal Pertemuan: murni lokal di HP ini saja, tidak pernah dikirim ke
+  // server — jadi bisa dibuka/diisi/dihapus tanpa internet sama sekali.
+  useEffect(() => {
+    setJadwalList(loadJadwalList(nip));
+  }, [nip]);
 
   const desaOptionsFor = useCallback(
     (kecamatan) =>
@@ -85,27 +110,20 @@ export default function P2K2Page() {
     [desaRecords]
   );
 
-  async function handleAddJadwal(e) {
+  function handleAddJadwal(e) {
     e.preventDefault();
     if (!jadwalForm.TANGGAL || !jadwalForm.DESA || !jadwalForm.KELOMPOK) return;
     setSavingJadwal(true);
-    try {
-      await fetch('/api/jadwal-p2k2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(jadwalForm),
-      });
-      setJadwalForm((f) => ({ ...f, DESA: '', KELOMPOK: '', TANGGAL: '', TEMPAT: '', MODUL: '', SESI: '' }));
-      loadJadwal();
-    } finally {
-      setSavingJadwal(false);
-    }
+    addJadwalLocal(nip, jadwalForm);
+    setJadwalList(loadJadwalList(nip));
+    setJadwalForm((f) => ({ ...f, DESA: '', KELOMPOK: '', TANGGAL: '', TEMPAT: '', MODUL: '', SESI: '' }));
+    setSavingJadwal(false);
   }
 
-  async function handleDeleteJadwal(id) {
+  function handleDeleteJadwal(id) {
     if (!confirm('Hapus jadwal ini?')) return;
-    await fetch(`/api/jadwal-p2k2/${encodeURIComponent(id)}`, { method: 'DELETE' });
-    loadJadwal();
+    deleteJadwalLocal(nip, id);
+    setJadwalList(loadJadwalList(nip));
   }
 
   const jadwalBulanIni = useMemo(
@@ -120,15 +138,35 @@ export default function P2K2Page() {
     }
     setLoadingAbsensi(true);
     setAbsensiError('');
+    setAbsensiFromCache(false);
     try {
-      const res = await fetch(`/api/kpm?kecamatan=${encodeURIComponent(absensiForm.KECAMATAN)}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Gagal memuat data');
-      let list = data.records.filter((r) => r.DESA === absensiForm.DESA);
+      const desaKey = normalizeDesaName(absensiForm.DESA);
+      let records = null;
+
+      // Pakai data KPM yang sudah tersimpan offline dulu (hasil "Unduh untuk
+      // Offline" di menu Data KPM) — supaya tidak perlu koneksi tiap kali
+      // mau cetak absensi.
+      const cache = loadKpmCache(absensiForm.KECAMATAN);
+      if (cache && Array.isArray(cache.records)) {
+        records = cache.records;
+        setAbsensiFromCache(true);
+      } else {
+        const res = await fetch(`/api/kpm?kecamatan=${encodeURIComponent(absensiForm.KECAMATAN)}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal memuat data');
+        records = data.records;
+        saveKpmCache(absensiForm.KECAMATAN, data.records, data.desaList);
+      }
+
+      let list = records.filter((r) => normalizeDesaName(r.DESA) === desaKey);
       if (absensiForm.KELOMPOK) {
-        list = list.filter((r) => r.KELOMPOK === absensiForm.KELOMPOK);
+        const kelompokKey = absensiForm.KELOMPOK.trim().toUpperCase();
+        list = list.filter((r) => (r.KELOMPOK || '').trim().toUpperCase() === kelompokKey);
       }
       setAbsensiKpm(list);
+      if (list.length === 0) {
+        setAbsensiError('Tidak ada data KPM untuk desa/kelompok ini. Pastikan sudah pernah "Unduh untuk Offline" di menu Data KPM, atau coba muat ulang saat online.');
+      }
     } catch (err) {
       setAbsensiError(err.message || 'Gagal memuat data.');
       setAbsensiKpm([]);
@@ -176,11 +214,9 @@ export default function P2K2Page() {
       {/* JADWAL PERTEMUAN */}
       <div className="card p-5">
         <h2 className="text-brand-800 font-bold mb-1">🗓️ Jadwal Pertemuan — {currentMonthLabel()}</h2>
-        <p className="text-sm text-brand-400 mb-4">Terlihat juga oleh admin untuk pemantauan.</p>
+        <p className="text-sm text-brand-400 mb-4">Tersimpan di HP ini saja, tidak perlu internet.</p>
 
-        {loadingJadwal ? (
-          <p className="text-sm text-brand-400 mb-4">Memuat...</p>
-        ) : jadwalBulanIni.length === 0 ? (
+        {jadwalBulanIni.length === 0 ? (
           <p className="text-sm text-brand-400 mb-4">Belum ada jadwal bulan ini.</p>
         ) : (
           <ul className="divide-y divide-brand-100 mb-4">
@@ -274,7 +310,8 @@ export default function P2K2Page() {
       <div className="card p-5">
         <h2 className="text-brand-800 font-bold mb-1">🖨️ Cetak Absensi</h2>
         <p className="text-sm text-brand-400 mb-4">
-          Pilih desa & kelompok, lalu cetak daftar hadir untuk pertemuan P2K2.
+          Pilih desa & kelompok, lalu cetak daftar hadir untuk pertemuan P2K2. Memakai data KPM
+          yang sudah diunduh offline bila tersedia.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           <select
@@ -332,6 +369,9 @@ export default function P2K2Page() {
           <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-3">
             {absensiError}
           </p>
+        )}
+        {absensiFromCache && absensiKpm.length > 0 && (
+          <p className="text-xs text-brand-400 mb-3">📴 Dimuat dari data offline di HP ini.</p>
         )}
 
         <div className="flex gap-3">
