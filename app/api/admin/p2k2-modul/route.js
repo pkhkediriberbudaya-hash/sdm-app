@@ -27,7 +27,7 @@ export async function POST(req) {
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
 
-    await ensureSheetExists(SHEET);
+    await ensureSheetExists(SHEET, HEADERS_FALLBACK);
     const { headers } = await readSheet(SHEET);
     await appendRow(SHEET, headers.length ? headers : HEADERS_FALLBACK, {
       ID: 'MOD' + Date.now(),

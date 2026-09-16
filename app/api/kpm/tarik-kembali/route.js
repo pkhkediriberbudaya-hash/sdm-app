@@ -38,7 +38,7 @@ export async function POST(req) {
     const updated = { ...record, STATUS_KEPESERTAAN: 'Aktif' };
     await updateRow(sheetName, record._row, headers, updated);
 
-    await ensureSheetExists(SHEET_LOG);
+    await ensureSheetExists(SHEET_LOG, LOG_HEADERS);
     const { headers: logHeaders } = await readSheet(SHEET_LOG);
     const { records: sdmRecords } = await readSheet(SHEET_SDM);
     const pendamping = sdmRecords.find((s) => (s.NIP || '').trim() === session.nip);

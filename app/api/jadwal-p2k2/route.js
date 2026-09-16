@@ -29,7 +29,7 @@ export async function POST(req) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    await ensureSheetExists(SHEET);
+    await ensureSheetExists(SHEET, HEADERS_FALLBACK);
     const { headers } = await readSheet(SHEET);
     const id = 'JP' + Date.now();
     await appendRow(SHEET, headers.length ? headers : HEADERS_FALLBACK, {

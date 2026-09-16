@@ -55,9 +55,11 @@ export default function PegawaiLayout({ children }) {
         } sm:translate-x-0`}
       >
         <div className="px-3 py-4 flex items-center gap-2 border-b border-brand-50">
-          <div className="w-9 h-9 rounded-lg bg-brand-gradient flex items-center justify-center text-white font-bold text-sm shrink-0">
-            S
-          </div>
+          <img
+            src="/logo/simsdm-icon.png"
+            alt="Logo SIM SDM"
+            className="w-9 h-9 rounded-lg object-contain shrink-0 bg-white"
+          />
           {!collapsed && (
             <div className="min-w-0">
               <p className="font-bold text-brand-800 text-sm leading-tight truncate">SIM SDM</p>

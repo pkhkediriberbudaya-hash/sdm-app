@@ -43,9 +43,11 @@ export default function AdminLayout({ children }) {
         } bg-white border-r border-brand-100 flex flex-col shrink-0 transition-all duration-200`}
       >
         <div className="px-3 py-4 flex items-center gap-2 border-b border-brand-50">
-          <div className="w-8 h-8 rounded-lg bg-brand-gradient flex items-center justify-center text-white font-bold text-sm shrink-0">
-            S
-          </div>
+          <img
+            src="/logo/simsdm-icon.png"
+            alt="Logo SIM SDM"
+            className="w-8 h-8 rounded-lg object-contain shrink-0 bg-white"
+          />
           {!collapsed && (
             <div className="min-w-0">
               <p className="font-bold text-brand-800 text-sm leading-tight truncate">SIM SDM</p>

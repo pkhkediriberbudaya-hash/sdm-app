@@ -4,6 +4,15 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 
 const ASSESSMENT_STATUS = 'Calon PPSE (Assessment SIKSMO)';
 
+// Status "calon" yang masih menggantung dan perlu ditindaklanjuti pendamping
+// (belum "Sukses ..."). Dipakai untuk memunculkan daftar calon di halaman ini,
+// bukan cuma mengandalkan pendamping mencari nama satu-satu.
+const CANDIDATE_STATUSES = [
+  'Calon Graduasi Mandiri',
+  'Calon PPSE',
+  ASSESSMENT_STATUS,
+];
+
 export default function GraduasiPage() {
   const [desaRecords, setDesaRecords] = useState([]);
   const [kecamatanOptions, setKecamatanOptions] = useState([]);
@@ -76,11 +85,25 @@ export default function GraduasiPage() {
       .slice(0, 15);
   }, [kpmRecords, search]);
 
+  // KPM yang statusnya sudah "Calon ..." (Graduasi Mandiri / PPSE) di sheet KPM
+  // tapi belum "Sukses ..." — baik yang ditandai lewat aplikasi ini maupun
+  // yang sudah datang begitu saat import CSV SIKS-NG. Ini yang perlu
+  // ditindaklanjuti pendamping, jadi ditampilkan sebagai daftar siap-submit,
+  // bukan cuma bisa ditemukan lewat pencarian nama.
+  const candidates = useMemo(
+    () => kpmRecords.filter((r) => CANDIDATE_STATUSES.includes(r.STATUS_KEPESERTAAN)),
+    [kpmRecords]
+  );
+
   function selectKpm(r) {
     setSelectedKpm(r);
     setSearch('');
     setMessage(null);
-    setJenis('Graduasi Mandiri');
+    // Kalau KPM ini sudah berstatus salah satu status PPSE, lanjutkan alur
+    // PPSE (bukan direset ke Graduasi Mandiri) supaya langkah yang sudah
+    // dilalui (mis. Assessment SIKSMO) tetap kebaca dan tombol berikutnya
+    // langsung aktif.
+    setJenis((r.STATUS_KEPESERTAAN || '').includes('PPSE') ? 'PPSE' : 'Graduasi Mandiri');
   }
 
   async function handleSubmit(tahap) {
@@ -165,6 +188,38 @@ export default function GraduasiPage() {
 
         {!selectedKpm ? (
           <>
+            {candidates.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm font-semibold text-brand-700 mb-2">
+                  🕓 Calon Graduasi / PPSE yang perlu ditindaklanjuti ({candidates.length})
+                </p>
+                <div className="border border-brand-100 rounded-lg overflow-hidden divide-y divide-brand-50">
+                  {candidates.map((r) => (
+                    <button
+                      key={r.NOKK}
+                      className="w-full text-left px-3 py-2.5 hover:bg-brand-50 flex items-center justify-between gap-3"
+                      onClick={() => selectKpm(r)}
+                    >
+                      <span>
+                        <span className="font-medium text-brand-800 block">{r.NAMA}</span>
+                        <span className="text-xs text-brand-400">
+                          {r.DESA} · {r.NOKK}
+                        </span>
+                      </span>
+                      <span
+                        className={`text-xs font-medium px-2 py-1 rounded-full shrink-0 ${
+                          r.STATUS_KEPESERTAAN.includes('PPSE')
+                            ? 'bg-brand-100 text-brand-600'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}
+                      >
+                        {r.STATUS_KEPESERTAAN}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <input
               className="input mb-3"
               placeholder={loadingKpm ? 'Memuat data KPM...' : 'Cari nama / NOKK / desa...'}

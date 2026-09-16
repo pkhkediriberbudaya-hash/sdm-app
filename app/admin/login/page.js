@@ -41,9 +41,11 @@ export default function AdminLoginPage() {
 
       <div className="w-full max-w-sm relative">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-white/15 backdrop-blur text-white text-2xl font-bold mb-4">
-            A
-          </div>
+          <img
+            src="/logo/simsdm-icon.png"
+            alt="Logo SIM SDM"
+            className="inline-flex w-14 h-14 rounded-xl bg-white/90 backdrop-blur mb-4 object-contain p-1.5"
+          />
           <h1 className="text-white text-2xl font-bold">Login Admin</h1>
           <p className="text-brand-100 text-sm mt-1">SIM SDM Pendamping</p>
         </div>
