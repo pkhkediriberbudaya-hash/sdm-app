@@ -38,8 +38,7 @@ export default function PegawaiLayout({ children }) {
     { href: `${homeHref}/kpm`, label: 'Data KPM', icon: '🧾' },
     { href: `${homeHref}/graduasi`, label: 'Graduasi & PPSE', icon: '📤' },
     { href: `${homeHref}/p2k2`, label: 'P2K2', icon: '📚' },
-    { href: `${homeHref}/jurnal`, label: 'Jurnal Harian', icon: '🗓️' },
-    { href: `${homeHref}/rhk`, label: 'Laporan RHK', icon: '📊' },
+    { href: `${homeHref}/jurnal`, label: 'Jurnal Harian & RHK', icon: '🗓️' },
     { href: `${homeHref}/ganti-password`, label: 'Ganti Password', icon: '🔑' },
   ];
 

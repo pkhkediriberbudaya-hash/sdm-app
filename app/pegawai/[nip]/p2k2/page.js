@@ -1,28 +1,14 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { normalizeDesaName } from '@/lib/normalize';
 import {
-  loadJadwalList,
-  addJadwalLocal,
-  deleteJadwalLocal,
   saveDesaCache,
   loadDesaCache,
   loadKpmCache,
   saveKpmCache,
 } from '@/lib/offlineStorage';
-
-function currentMonthLabel() {
-  return new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-}
-
-function isThisMonth(dateStr) {
-  if (!dateStr) return false;
-  const d = new Date(dateStr);
-  const now = new Date();
-  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-}
 
 export default function P2K2Page() {
   const params = useParams();
@@ -33,18 +19,6 @@ export default function P2K2Page() {
 
   const [desaRecords, setDesaRecords] = useState([]);
   const [kecamatanOptions, setKecamatanOptions] = useState([]);
-
-  const [jadwalList, setJadwalList] = useState([]);
-  const [jadwalForm, setJadwalForm] = useState({
-    KECAMATAN: '',
-    DESA: '',
-    KELOMPOK: '',
-    TANGGAL: '',
-    TEMPAT: '',
-    MODUL: '',
-    SESI: '',
-  });
-  const [savingJadwal, setSavingJadwal] = useState(false);
 
   const [absensiForm, setAbsensiForm] = useState({
     KECAMATAN: '',
@@ -94,41 +68,13 @@ export default function P2K2Page() {
     setDesaRecords(list);
     const kecs = Array.from(new Set(list.map((x) => x.KECAMATAN))).sort();
     setKecamatanOptions(kecs);
-    setJadwalForm((f) => (f.KECAMATAN ? f : { ...f, KECAMATAN: kecs[0] || '' }));
     setAbsensiForm((f) => (f.KECAMATAN ? f : { ...f, KECAMATAN: kecs[0] || '' }));
   }
-
-  // Jadwal Pertemuan: murni lokal di HP ini saja, tidak pernah dikirim ke
-  // server — jadi bisa dibuka/diisi/dihapus tanpa internet sama sekali.
-  useEffect(() => {
-    setJadwalList(loadJadwalList(nip));
-  }, [nip]);
 
   const desaOptionsFor = useCallback(
     (kecamatan) =>
       desaRecords.filter((d) => d.KECAMATAN === kecamatan).map((d) => d.NAMA_DESA),
     [desaRecords]
-  );
-
-  function handleAddJadwal(e) {
-    e.preventDefault();
-    if (!jadwalForm.TANGGAL || !jadwalForm.DESA || !jadwalForm.KELOMPOK) return;
-    setSavingJadwal(true);
-    addJadwalLocal(nip, jadwalForm);
-    setJadwalList(loadJadwalList(nip));
-    setJadwalForm((f) => ({ ...f, DESA: '', KELOMPOK: '', TANGGAL: '', TEMPAT: '', MODUL: '', SESI: '' }));
-    setSavingJadwal(false);
-  }
-
-  function handleDeleteJadwal(id) {
-    if (!confirm('Hapus jadwal ini?')) return;
-    deleteJadwalLocal(nip, id);
-    setJadwalList(loadJadwalList(nip));
-  }
-
-  const jadwalBulanIni = useMemo(
-    () => jadwalList.filter((j) => isThisMonth(j.TANGGAL)).sort((a, b) => new Date(a.TANGGAL) - new Date(b.TANGGAL)),
-    [jadwalList]
   );
 
   async function handleLoadAbsensiData() {
@@ -209,101 +155,6 @@ export default function P2K2Page() {
             ))}
           </ul>
         )}
-      </div>
-
-      {/* JADWAL PERTEMUAN */}
-      <div className="card p-5">
-        <h2 className="text-brand-800 font-bold mb-1">🗓️ Jadwal Pertemuan — {currentMonthLabel()}</h2>
-        <p className="text-sm text-brand-400 mb-4">Tersimpan di HP ini saja, tidak perlu internet.</p>
-
-        {jadwalBulanIni.length === 0 ? (
-          <p className="text-sm text-brand-400 mb-4">Belum ada jadwal bulan ini.</p>
-        ) : (
-          <ul className="divide-y divide-brand-100 mb-4">
-            {jadwalBulanIni.map((j) => (
-              <li key={j.ID} className="py-3 flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-medium text-brand-800">
-                    {new Date(j.TANGGAL).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} ·{' '}
-                    {j.KELOMPOK}
-                  </p>
-                  <p className="text-sm text-brand-400">
-                    {j.DESA} · {j.TEMPAT || '-'}
-                    {j.MODUL ? ` · Modul: ${j.MODUL}` : ''}
-                    {j.SESI ? ` (Sesi ${j.SESI})` : ''}
-                  </p>
-                </div>
-                <button
-                  className="text-red-600 text-sm underline shrink-0"
-                  onClick={() => handleDeleteJadwal(j.ID)}
-                >
-                  Hapus
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <form onSubmit={handleAddJadwal} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <select
-            className="input"
-            value={jadwalForm.KECAMATAN}
-            onChange={(e) =>
-              setJadwalForm((f) => ({ ...f, KECAMATAN: e.target.value, DESA: '' }))
-            }
-          >
-            {kecamatanOptions.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
-          <select
-            className="input"
-            value={jadwalForm.DESA}
-            onChange={(e) => setJadwalForm((f) => ({ ...f, DESA: e.target.value }))}
-          >
-            <option value="">-- Pilih Desa --</option>
-            {desaOptionsFor(jadwalForm.KECAMATAN).map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-          <input
-            className="input"
-            placeholder="Nama Kelompok"
-            value={jadwalForm.KELOMPOK}
-            onChange={(e) => setJadwalForm((f) => ({ ...f, KELOMPOK: e.target.value }))}
-          />
-          <input
-            className="input"
-            type="date"
-            value={jadwalForm.TANGGAL}
-            onChange={(e) => setJadwalForm((f) => ({ ...f, TANGGAL: e.target.value }))}
-          />
-          <input
-            className="input"
-            placeholder="Tempat"
-            value={jadwalForm.TEMPAT}
-            onChange={(e) => setJadwalForm((f) => ({ ...f, TEMPAT: e.target.value }))}
-          />
-          <input
-            className="input"
-            placeholder="Modul (opsional)"
-            value={jadwalForm.MODUL}
-            onChange={(e) => setJadwalForm((f) => ({ ...f, MODUL: e.target.value }))}
-          />
-          <input
-            className="input sm:col-span-2"
-            placeholder="Sesi (opsional)"
-            value={jadwalForm.SESI}
-            onChange={(e) => setJadwalForm((f) => ({ ...f, SESI: e.target.value }))}
-          />
-          <button className="btn-accent sm:col-span-2" disabled={savingJadwal}>
-            {savingJadwal ? 'Menyimpan...' : '+ Tambah Jadwal'}
-          </button>
-        </form>
       </div>
 
       {/* CETAK ABSENSI */}

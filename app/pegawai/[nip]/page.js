@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { WILAYAH_KEDIRI } from '@/lib/wilayahKediri';
+import { saveDesaCsvCache, loadDesaCsvCache } from '@/lib/offlineStorage';
 
 const READONLY_FIELDS = ['NO', 'NIP', 'NIK', 'STATUS DATA'];
 const HIDDEN_FIELDS = ['NO', 'STATUS DATA'];
@@ -75,10 +76,43 @@ export default function PegawaiPage() {
   const [addingDesa, setAddingDesa] = useState(false);
 
   const kecamatanList = useMemo(() => Object.keys(WILAYAH_KEDIRI).sort(), []);
-  const desaOptions = useMemo(
-    () => (selectedKecamatan ? WILAYAH_KEDIRI[selectedKecamatan] || [] : []),
-    [selectedKecamatan]
-  );
+  const [desaOptions, setDesaOptions] = useState([]);
+  const [desaOptionsLoading, setDesaOptionsLoading] = useState(false);
+  const [desaOptionsFromCache, setDesaOptionsFromCache] = useState(false);
+
+  // Pilihan Desa/Kelurahan diambil dari nama desa yang BENAR-BENAR ada di
+  // CSV KPM kecamatan tsb (bukan master wilayah statis), supaya ejaannya
+  // pasti cocok dan desa yang datanya sudah diupload admin tidak pernah
+  // "hilang" dari pilihan. Dicache per kecamatan supaya sesudah pertama kali
+  // dimuat, buka lagi tidak perlu panggil server sama sekali.
+  useEffect(() => {
+    if (!selectedKecamatan) {
+      setDesaOptions([]);
+      return;
+    }
+    const cached = loadDesaCsvCache(selectedKecamatan);
+    if (cached && Array.isArray(cached.desaList)) {
+      setDesaOptions(cached.desaList);
+      setDesaOptionsFromCache(true);
+    } else {
+      setDesaOptions(WILAYAH_KEDIRI[selectedKecamatan] || []);
+      setDesaOptionsFromCache(false);
+    }
+    setDesaOptionsLoading(true);
+    fetch(`/api/kpm/desa-in-csv?kecamatan=${encodeURIComponent(selectedKecamatan)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.desaList) && d.desaList.length > 0) {
+          setDesaOptions(d.desaList);
+          setDesaOptionsFromCache(false);
+          saveDesaCsvCache(selectedKecamatan, d.desaList);
+        }
+      })
+      .catch(() => {
+        /* offline: tetap pakai cache/fallback yang sudah ditampilkan di atas */
+      })
+      .finally(() => setDesaOptionsLoading(false));
+  }, [selectedKecamatan]);
 
   const [keluargaList, setKeluargaList] = useState([]);
   const [keluargaLoading, setKeluargaLoading] = useState(true);
@@ -452,7 +486,20 @@ export default function PegawaiPage() {
 
           {selectedKecamatan && (
             <div>
-              <label className="label">Desa/Kelurahan (boleh pilih lebih dari satu)</label>
+              <label className="label">
+                Desa/Kelurahan (boleh pilih lebih dari satu)
+                {desaOptionsLoading && (
+                  <span className="text-xs text-brand-400 font-normal"> · menyegarkan...</span>
+                )}
+              </label>
+              {desaOptionsFromCache && (
+                <p className="text-xs text-brand-400 mb-1">📴 Daftar dari data offline di HP ini.</p>
+              )}
+              {desaOptions.length === 0 && !desaOptionsLoading && (
+                <p className="text-xs text-brand-400 mb-1">
+                  Belum ada data KPM untuk kecamatan ini.
+                </p>
+              )}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto border border-brand-100 rounded-lg p-3">
                 {desaOptions.map((desa) => {
                   const alreadyAdded = desaList.some(
