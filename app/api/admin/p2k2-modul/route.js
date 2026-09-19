@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
-import { readSheet, appendRow, ensureSheetExists } from '@/lib/googleSheets';
+import { readSheet, appendRow, ensureValidHeaders } from '@/lib/googleSheets';
 
 const SHEET = process.env.SHEET_P2K2_MODUL || 'P2K2Modul';
 const HEADERS_FALLBACK = ['ID', 'JUDUL', 'DESKRIPSI', 'URL', 'NAMA_FILE', 'TANGGAL_UPLOAD'];
@@ -27,7 +27,7 @@ export async function POST(req) {
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
 
-    await ensureSheetExists(SHEET, HEADERS_FALLBACK);
+    await ensureValidHeaders(SHEET, HEADERS_FALLBACK);
     const { headers } = await readSheet(SHEET);
     await appendRow(SHEET, headers.length ? headers : HEADERS_FALLBACK, {
       ID: 'MOD' + Date.now(),

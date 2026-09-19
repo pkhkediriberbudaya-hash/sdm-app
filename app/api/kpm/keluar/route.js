@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { readSheet, updateRow, appendRow, ensureSheetExists } from '@/lib/googleSheets';
+import { readSheet, updateRow, appendRow, ensureValidHeaders } from '@/lib/googleSheets';
 import { getPegawaiSession } from '@/lib/pegawaiAuth';
 import { normalizeDesaName } from '@/lib/normalize';
 
@@ -75,7 +75,7 @@ export async function POST(req) {
     const updated = { ...record, STATUS_KEPESERTAAN: targetStatus };
     await updateRow(sheetName, record._row, headers, updated);
 
-    await ensureSheetExists(SHEET_LOG, LOG_HEADERS);
+    await ensureValidHeaders(SHEET_LOG, LOG_HEADERS);
     const { headers: logHeaders } = await readSheet(SHEET_LOG);
     const { records: sdmRecords } = await readSheet(SHEET_SDM);
     const pendamping = sdmRecords.find((s) => (s.NIP || '').trim() === session.nip);

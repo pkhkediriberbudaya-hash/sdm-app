@@ -39,6 +39,7 @@ export default function PegawaiLayout({ children }) {
     { href: `${homeHref}/graduasi`, label: 'Graduasi & PPSE', icon: '📤' },
     { href: `${homeHref}/p2k2`, label: 'P2K2', icon: '📚' },
     { href: `${homeHref}/jurnal`, label: 'Jurnal Harian & RHK', icon: '🗓️' },
+    { href: `${homeHref}/insidental`, label: 'Tugas Insidental', icon: '📌' },
     { href: `${homeHref}/ganti-password`, label: 'Ganti Password', icon: '🔑' },
   ];
 
@@ -49,7 +50,7 @@ export default function PegawaiLayout({ children }) {
   return (
     <div className="min-h-screen bg-[#f0f4f9]">
       <aside
-        className={`fixed inset-y-0 left-0 z-40 ${sidebarWidth} bg-white border-r border-brand-100 flex flex-col transform transition-all duration-200 ${
+        className={`print:hidden fixed inset-y-0 left-0 z-40 ${sidebarWidth} bg-white border-r border-brand-100 flex flex-col transform transition-all duration-200 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } sm:translate-x-0`}
       >
@@ -133,7 +134,7 @@ export default function PegawaiLayout({ children }) {
       )}
 
       <div className={`flex flex-col min-h-screen transition-all duration-200 ${collapsed ? 'sm:ml-16' : 'sm:ml-72'}`}>
-        <header className="sticky top-0 z-20 bg-brand-gradient-header text-white px-4 py-4 flex items-center justify-between shadow shrink-0">
+        <header className="print:hidden sticky top-0 z-20 bg-brand-gradient-header text-white px-4 py-4 flex items-center justify-between shadow shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <button
               className="sm:hidden text-xl leading-none"
